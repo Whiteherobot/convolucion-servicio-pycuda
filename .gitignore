@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+datos/*.pgm
+datos/*.png
+datos/*.jpg
+tmp/
+resultados/temporales/
+.DS_Store
