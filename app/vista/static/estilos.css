@@ -1,0 +1,102 @@
+/* Estilos sobrios de la interfaz. Bloque 1 - Michael Lata. */
+body {
+  margin: 0;
+  background: #f4f6f8;
+  color: #20242a;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+main {
+  max-width: 1100px;
+  margin: 24px auto;
+  padding: 24px;
+  background: #ffffff;
+  border: 1px solid #dfe4ea;
+}
+
+h1, h2 {
+  margin-top: 0;
+}
+
+form {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 18px;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+}
+
+input, select, button {
+  box-sizing: border-box;
+  min-height: 38px;
+  padding: 7px 9px;
+  border: 1px solid #b9c1cb;
+  background: #ffffff;
+  color: #20242a;
+  font: inherit;
+}
+
+button {
+  border: 0;
+  background: #2457b2;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+button:disabled {
+  background: #7d91b5;
+  cursor: wait;
+}
+
+.error {
+  margin: 12px 0;
+  padding: 10px;
+  border-left: 4px solid #b42318;
+  background: #fef3f2;
+  color: #912018;
+}
+
+.imagenes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+figure {
+  margin: 0;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #dfe4ea;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+  max-height: 520px;
+  margin: auto;
+}
+
+table {
+  width: 100%;
+  margin-top: 12px;
+  border-collapse: collapse;
+}
+
+th, td {
+  padding: 8px;
+  border-bottom: 1px solid #dfe4ea;
+  text-align: left;
+}
+
+@media (max-width: 760px) {
+  form, .imagenes {
+    grid-template-columns: 1fr;
+  }
+}

@@ -57,10 +57,12 @@ Cada uno trabaja en su rama y abre un Pull Request hacia `main`. No cambiar el c
 
 ## Contrato (bloque 1, para los bloques 2 y 3)
 
-Arranque del servicio (un solo proceso: el contexto CUDA vive en un único hilo trabajador de la GPU):
+Arranque del servicio. Un solo proceso: el contexto CUDA vive en un único hilo trabajador que atiende la GPU
+en orden de llegada (FIFO). Los 8 hilos de gunicorn reciben solicitudes; como máximo 1 está en la GPU y 4 esperan,
+la siguiente recibe 503:
 
 ```bash
-gunicorn -w 1 --threads 4 -b 0.0.0.0:8000 "app.servidor:crear_app()"
+gunicorn -w 1 --threads 8 -b 0.0.0.0:8000 "app.servidor:crear_app()"
 ```
 
 | Ruta | Qué hace |
@@ -100,7 +102,7 @@ python -m app.directo datos/imagen_4000.pgm resultados/media9.png media 9 --hilo
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 # imágenes de prueba: ver datos/README.md
-gunicorn -w 1 --threads 4 -b 0.0.0.0:8000 "app.servidor:crear_app()"
+gunicorn -w 1 --threads 8 -b 0.0.0.0:8000 "app.servidor:crear_app()"
 # http://localhost:8000
 curl -F imagen=@datos/imagen_2000.pgm -F filtro=media -F mascara=9 http://localhost:8000/api/procesar
 ```

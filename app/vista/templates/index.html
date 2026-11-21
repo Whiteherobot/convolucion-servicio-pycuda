@@ -1,0 +1,68 @@
+<!doctype html>
+<!-- Interfaz del servicio. Bloque 1 - Michael Lata. -->
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Convolución PyCUDA</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='estilos.css') }}">
+</head>
+<body>
+  <main>
+    <h1>Convolución PyCUDA</h1>
+    <form id="formulario">
+      <label>Archivo de imagen
+        <input id="imagen" name="imagen" type="file" required>
+      </label>
+      <label>Filtro
+        <select id="filtro" name="filtro">
+          <option value="media">Media</option>
+          <option value="nitidez">Nitidez</option>
+          <option value="laplaciano">Laplaciano</option>
+        </select>
+      </label>
+      <label>Máscara
+        <select id="mascara" name="mascara">
+          <option value="3">3</option>
+          <option value="9">9</option>
+          <option value="21">21</option>
+        </select>
+      </label>
+      <label>Hilos
+        <input id="hilos" name="hilos" type="number" value="256" min="1" max="1024">
+      </label>
+      <button id="procesar" type="submit">Procesar</button>
+    </form>
+
+    <div id="error" class="error" hidden></div>
+
+    <section class="imagenes">
+      <figure>
+        <h2>Original</h2>
+        <img id="original" alt="Vista previa original" hidden>
+        <p id="sin-vista" hidden>Vista previa no disponible</p>
+      </figure>
+      <figure>
+        <h2>Resultado</h2>
+        <img id="resultado" alt="Resultado de la convolución" hidden>
+      </figure>
+    </section>
+
+    <section id="detalles" hidden>
+      <h2>Detalles</h2>
+      <p>Solicitud: <span id="id"></span></p>
+      <p>Dimensiones: <span id="dimensiones"></span></p>
+      <p>Hilos: <span id="hilos-detalle"></span></p>
+      <p>Bloques: <span id="bloques"></span></p>
+      <p>Tiempo total en navegador: <span id="navegador"></span> ms</p>
+      <a id="descarga" href="#" download>Descargar resultado</a>
+
+      <table>
+        <thead><tr><th>Medición</th><th>Alcance</th><th>ms</th></tr></thead>
+        <tbody id="tabla-tiempos"></tbody>
+      </table>
+    </section>
+  </main>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
