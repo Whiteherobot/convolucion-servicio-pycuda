@@ -32,7 +32,7 @@ Cada uno trabaja en su rama y abre un Pull Request hacia `main`. No cambiar el c
       dentro del contenedor). Configurar NVIDIA Container Toolkit (`nvidia-ctk runtime configure --runtime=docker`).
 - [x] Comandos exactos: construir, comprobar GPU (`docker run --rm --gpus all <imagen> nvidia-smi`) e iniciar.
       Construir desde un clon limpio y anotar imagen base, versiones, `docker images --digests` y commit.
-- [x] Despliegue: nube con GPU NVIDIA si hay créditos; si no, la laptop de Michael (RTX 4060) documentando la
+- [x] Despliegue: nube con GPU NVIDIA si hay créditos; si no, la laptop de Jordy (RTX 3080 Laptop) documentando la
       limitación y entrando desde otro equipo de la red. Documentar CPU, RAM, GPU, SO, controlador, Docker,
       Python, PyCUDA y CUDA, puerto y forma de acceso. Evidencia: contenedor corriendo + solicitud que usa PyCUDA.
 - [x] `pruebas/` (pytest): matriz pequeña y límites (prueba manual de la P02 y una imagen 1001×777),
@@ -41,58 +41,9 @@ Cada uno trabaja en su rama y abre un Pull Request hacia `main`. No cambiar el c
       desconocido, máscara no permitida → código y mensaje, y que el servicio siga respondiendo) y aislamiento
       (dos solicitudes distintas a la vez reciben cada una su resultado; con la cola llena responde 503).
 
-**Estado del Bloque 2:** `Dockerfile`, `.dockerignore`, `pruebas/` y `despliegue/` listos (25 pruebas pasan contra
-el contenedor, más 2 fallos esperados que son del Bloque 1, ver el recuadro de abajo). Comandos, entorno y decisiones: [`despliegue/README.md`](despliegue/README.md) y
+**Estado del Bloque 2:** `Dockerfile`, `.dockerignore`, `pruebas/` y `despliegue/` listos (pruebas pasando contra
+el contenedor; los tres errores que encontró la revisión en `app/modelo/solicitudes.py` ya están corregidos). Comandos, entorno y decisiones: [`despliegue/README.md`](despliegue/README.md) y
 [`pruebas/README.md`](pruebas/README.md). Probado desde un teléfono en la red y construido sin caché desde un clon limpio.
-
-> [!NOTE]
-> **Resuelto en `bloque-3-experimentos`:** los tres parches de abajo se aplicaron tal cual en
-> `app/modelo/solicitudes.py` (también en `ruta_resultado()`) y se quitaron las dos marcas `xfail`.
-> El recuadro queda como registro de la revisión.
-
-> [!WARNING]
-> **PENDIENTES PARA MICHAEL (Bloque 1).** La revisión del Bloque 2 encontró tres errores en `app/modelo/solicitudes.py`.
-> Cada uno trae el parche propuesto y cómo comprobarlo. Hace falta **quitar la marca `xfail`** de la prueba
-> correspondiente cuando quede corregido.
->
-> **1. Una imagen truncada responde 500 en vez de 400.** `validar()` solo lee la cabecera, así que el archivo
-> corrupto falla después, en la GPU (`Falla de procesamiento GPU: image file is truncated`). En `_trabajador`,
-> reemplaza `arreglo = decodificar(trabajo["datos"])` por:
->
-> ```python
-> try:
->     arreglo = decodificar(trabajo["datos"])
-> except Exception:
->     raise ErrorSolicitud(400, "El archivo no es una imagen válida")
-> ```
->
-> No decodifica dos veces, así que no altera los tiempos del servidor.
-> Prueba: `pytest pruebas/test_entradas_invalidas.py::test_imagen_truncada_responde_400` (`xfail` estricto).
->
-> **2. `limpiar_viejos()` falla si dos hilos borran el mismo archivo vencido** (`FileNotFoundError` → 500, y también
-> puede tumbar `/api/salud`). Se reprodujo: 8 hilos y 1000 archivos vencidos. Se llama al inicio de cada ruta.
->
-> ```python
-> def limpiar_viejos(self):
->     ahora = time.time()
->     for archivo in Path(self.directorio).glob("*"):
->         try:
->             if ahora - archivo.stat().st_mtime > VIDA_RESULTADO_S:
->                 archivo.unlink()
->         except FileNotFoundError:
->             pass  # otro hilo ya lo borró
-> ```
->
-> `ruta_resultado()` tiene el mismo problema entre `getmtime` y `unlink`: devolver `None` si falta el archivo.
-> Prueba: `pytest pruebas/test_limpieza.py` (`xfail`).
->
-> **3. `enviar()` espera sin límite:** `trabajo["evento"].wait()`. Si el trabajador de la GPU se cuelga, los 8
-> hilos de gunicorn quedan bloqueados y el servicio deja de responder, incluido el healthcheck. Propuesta:
-> `if not trabajo["evento"].wait(timeout=120): raise ErrorSolicitud(503, "El procesamiento tardó demasiado")`.
-> Sin prueba automática (hay que simular un trabajador colgado).
->
-> *Recomendado (menor):* `Falla de procesamiento GPU: ` + `str(error)` devuelve al cliente el texto de la excepción
-> interna; mejor un mensaje fijo y dejar el detalle en el registro del servidor.
 
 ### Bloque 3 — Andrés Morocho
 

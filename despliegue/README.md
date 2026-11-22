@@ -92,7 +92,7 @@ laptop (`ip -4 addr`). Se comprueba desde el otro equipo con `curl http://<IP>:8
 - Contenedor `conv-p03` en estado `healthy`, corriendo como usuario `servicio` (uid 999).
 - Solicitud real por el servicio en contenedor: media 9×9 sobre `imagen_2000.pgm`, `kernel` ≈ 0.9 ms,
   `h2d` ≈ 2 ms, `d2h` ≈ 3.4 ms.
-- `pytest` contra el contenedor: 25 pasan y 2 fallos esperados, que son errores del Bloque 1 (ver `pruebas/README.md`).
+- `pytest` contra el contenedor: 25 pasan. El resultado final, con todas las pruebas, queda en `pytest.txt` de cada corrida.
 - El 503 con la cola llena se comprueba por HTTP: 12 solicitudes a la vez dieron 5 respuestas 200 y 7 respuestas 503.
 - **Acceso desde otro equipo:** funciona desde un teléfono en la misma red Wi-Fi, con
   `http://<IP de la laptop>:8000/api/salud` y la interfaz en `http://<IP de la laptop>:8000/`.
@@ -109,8 +109,8 @@ Clon nuevo de la rama `bloque-2-docker`, construido con `docker build --no-cache
 | Tamaño | 13.8 GB |
 | nvcc / Python / PyCUDA | 13.4.92 / 3.12.3 / 2026.1 |
 | Contenedor | `healthy` con `--gpus all --memory=4g` |
-| `pytest` desde el clon | 21 pasan, 4 saltadas y 2 fallos esperados (el clon no trae los `.pgm`, que se generan según `datos/README.md`) |
-| `pytest` con los `.pgm` | 25 pasan y 2 fallos esperados |
+| `pytest` desde el clon | 21 pasan y 4 saltadas (el clon no trae los `.pgm`, que se generan según `datos/README.md`) |
+| `pytest` con los `.pgm` | 25 pasan |
 
 El digest cambia en cada construcción (las capas llevan marcas de tiempo), así que no sirve para comparar
 dos builds: lo que identifica la versión es el commit y el digest de la imagen base.
