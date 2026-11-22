@@ -14,7 +14,6 @@ ARCHIVOS = 1000
 HILOS = 8
 
 
-@pytest.mark.xfail(reason="Bloque 1: limpiar_viejos() falla si otro hilo borra el mismo archivo", strict=False)
 def test_varios_hilos_pueden_limpiar_a_la_vez():
     carpeta = tempfile.mkdtemp()
     vencido = time.time() - VIDA_RESULTADO_S - 60

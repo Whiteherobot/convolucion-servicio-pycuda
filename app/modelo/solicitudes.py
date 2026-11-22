@@ -27,6 +27,7 @@ FILTROS = {"media": (3, 9, 21), "nitidez": (3,), "laplaciano": (3,)}
 MAX_COLA = 4  # solicitudes en espera; una más puede estar en la GPU
 VIDA_RESULTADO_S = 600
 HILOS_POR_DEFECTO = 256
+TIEMPO_MAXIMO_S = 120  # espera máxima de una solicitud; si la GPU se cuelga, responde 503
 
 Image.MAX_IMAGE_PIXELS = MAX_LADO * MAX_LADO + 1
 
@@ -127,7 +128,10 @@ class ColaGPU:
                     raise ErrorSolicitud(503, "GPU no disponible: " + motivo)
 
                 inicio = time.perf_counter()
-                arreglo = decodificar(trabajo["datos"])
+                try:
+                    arreglo = decodificar(trabajo["datos"])
+                except Exception:
+                    raise ErrorSolicitud(400, "El archivo no es una imagen válida")
                 tiempo_decodificacion = (time.perf_counter() - inicio) * 1000
 
                 resultado, tiempos = procesar(
@@ -194,7 +198,8 @@ class ColaGPU:
         except queue.Full:
             raise ErrorSolicitud(503, "Cola llena, intenta de nuevo")
 
-        trabajo["evento"].wait()
+        if not trabajo["evento"].wait(timeout=TIEMPO_MAXIMO_S):
+            raise ErrorSolicitud(503, "El procesamiento tardó demasiado")
         if "error" in trabajo:
             raise trabajo["error"]
         return trabajo["respuesta"]
@@ -206,8 +211,11 @@ class ColaGPU:
     def limpiar_viejos(self):
         ahora = time.time()
         for archivo in Path(self.directorio).glob("*"):
-            if archivo.is_file() and ahora - archivo.stat().st_mtime > VIDA_RESULTADO_S:
-                archivo.unlink()
+            try:
+                if archivo.is_file() and ahora - archivo.stat().st_mtime > VIDA_RESULTADO_S:
+                    archivo.unlink()
+            except FileNotFoundError:
+                pass  # otro hilo ya lo borró
 
     def ruta_resultado(self, id_texto: str, ext: str):
         if not re.fullmatch(r"[0-9a-f]{32}", id_texto or ""):
@@ -215,12 +223,12 @@ class ColaGPU:
         if ext not in ("png", "npy"):
             return None
         ruta = os.path.join(self.directorio, id_texto + "." + ext)
-        if not os.path.isfile(ruta):
-            return None
-        ahora = time.time()
-        if ahora - os.path.getmtime(ruta) > VIDA_RESULTADO_S:
-            os.unlink(ruta)
-            return None
+        try:
+            if time.time() - os.path.getmtime(ruta) > VIDA_RESULTADO_S:
+                os.unlink(ruta)
+                return None
+        except FileNotFoundError:
+            return None  # no existe o lo borró otro hilo
         return ruta
 
     def salud(self):
