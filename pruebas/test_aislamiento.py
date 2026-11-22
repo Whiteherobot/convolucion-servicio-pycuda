@@ -1,28 +1,16 @@
 """Solicitudes simultáneas: cada una recibe su resultado; con la cola llena, 503. Bloque 2 - Jordy Romero."""
-import io
-import time
 from concurrent.futures import ThreadPoolExecutor
-from types import SimpleNamespace
+from pathlib import Path
 
-import numpy as np
+import pytest
+import requests
 
 from app.modelo import mascaras
-from app.modelo.pycuda_conv import TiemposGPU
 from app.modelo.validacion import TOLERANCIA, errores
-from app.servidor import crear_app
-from conftest import a_png, descargar_crudo, enviar, imagen_aleatoria
+from conftest import URL, a_png, descargar_crudo, enviar, imagen_aleatoria
 
-
-class GpuLenta:
-    """GPU falsa: tarda 0.3 s por solicitud, lo justo para que la cola se llene."""
-
-    contexto_ms = 0.0
-    compilacion_ms = 0.0
-    contexto = SimpleNamespace(pop=lambda: None)
-
-    def ejecutar(self, imagen, mascara, hilos):
-        time.sleep(0.3)
-        return np.zeros_like(imagen), TiemposGPU()
+IMAGEN_4000 = Path(__file__).resolve().parents[1] / "datos" / "imagen_4000.pgm"
+SOLICITUDES_A_LA_VEZ = 12  # con 8 hilos en gunicorn: 1 en la GPU + 4 en cola + 3 rechazadas
 
 
 def test_dos_solicitudes_a_la_vez_reciben_cada_una_su_resultado(gpu):
@@ -43,25 +31,15 @@ def test_dos_solicitudes_a_la_vez_reciben_cada_una_su_resultado(gpu):
     assert respuestas[0].json()["id"] != respuestas[1].json()["id"]
 
 
-def test_con_la_cola_llena_responde_503_y_el_servicio_sigue(monkeypatch):
-    # Se prueba la app en este proceso con una GPU falsa: con gunicorn --threads 4 nunca hay más de
-    # 4 solicitudes dentro a la vez y la cola (4 en espera + 1 en la GPU) no llega a llenarse por HTTP.
-    monkeypatch.setattr("app.modelo.solicitudes.ConvolucionPyCUDA", GpuLenta)
-    app = crear_app()
-    cola = app.extensions["cola_gpu"]
-    datos = a_png(imagen_aleatoria(50, 50))
+@pytest.mark.skipif(not IMAGEN_4000.exists(), reason="falta datos/imagen_4000.pgm (ver datos/README.md)")
+def test_con_la_cola_llena_responde_503_y_el_servicio_sigue():
+    # Imagen grande y media 21: cada solicitud ocupa la GPU el tiempo suficiente para llenar la cola.
+    datos = IMAGEN_4000.read_bytes()
+    with ThreadPoolExecutor(SOLICITUDES_A_LA_VEZ) as pool:
+        codigos = list(pool.map(lambda _: enviar(datos, "media", 21).status_code,
+                                range(SOLICITUDES_A_LA_VEZ)))
 
-    def solicitar(_):
-        campos = {"imagen": (io.BytesIO(datos), "imagen.png"), "filtro": "media", "mascara": "3"}
-        return app.test_client().post("/api/procesar", data=campos).status_code
-
-    try:
-        with ThreadPoolExecutor(12) as pool:
-            codigos = list(pool.map(solicitar, range(12)))
-        assert 503 in codigos
-        assert 200 in codigos
-        assert set(codigos) <= {200, 503}
-        assert app.test_client().get("/api/salud").status_code == 200
-    finally:
-        cola.detener()
-        cola.hilo.join(timeout=10)
+    assert 503 in codigos
+    assert 200 in codigos
+    assert set(codigos) <= {200, 503}
+    assert requests.get(URL + "/api/salud", timeout=5).status_code == 200

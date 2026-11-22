@@ -26,6 +26,7 @@ def test_laplaciano_figura1():
 def test_media_con_ceros_fuera_de_la_imagen():
     unos = np.ones((5, 7), dtype=np.float32)
     respuesta = enviar(a_png(unos), "media", 3)
+    assert respuesta.status_code == 200
     salida = descargar_crudo(respuesta.json())
     # Esquina: 4 vecinos dentro de 9; borde: 6 de 9; interior: 9 de 9.
     assert salida[0, 0] == pytest.approx(4 / 9, abs=TOLERANCIA)
