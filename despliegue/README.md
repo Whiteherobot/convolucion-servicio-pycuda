@@ -8,8 +8,9 @@
 | `python3-dev` y `build-essential` | `pip` compila PyCUDA al instalarlo. |
 | Entorno virtual en `/opt/venv` | Ubuntu 24.04 no permite `pip install` fuera de un entorno virtual. |
 | Usuario `servicio` (no root) | El servicio no necesita privilegios. |
-| `gunicorn -w 1 --threads 4` | Un solo proceso: el contexto CUDA vive en un único hilo trabajador. |
-| `HEALTHCHECK` sobre `/api/salud` | Docker marca `healthy` cuando la GPU y el kernel ya cargaron (periodo de gracia de 60 s). |
+| `gunicorn -w 1 --threads 8` | Un solo proceso: el contexto CUDA vive en un único hilo trabajador. Los 8 hilos son los del contrato del Bloque 1. |
+| `HEALTHCHECK` sobre `/api/salud` | `healthy` solo si la respuesta trae `gpu` distinto de `null`: `/api/salud` responde 200 desde que arranca gunicorn, pero la GPU carga después. Periodo de gracia de 60 s. |
+| Base con digest | La etiqueta de una imagen se puede mover; el digest no. |
 
 La imagen pesa unos 14 GB: la base `-devel` ya son 13.4 GB. No se redujo con multi-etapa porque `nvcc`
 tiene que estar en tiempo de ejecución.
@@ -45,7 +46,7 @@ docker build -t convolucion-servicio:p03 .
 docker run --rm --gpus all convolucion-servicio:p03 nvidia-smi
 
 # 3. Iniciar el servicio
-docker run -d --name conv-p03 --gpus all -p 8000:8000 --restart unless-stopped convolucion-servicio:p03
+docker run -d --name conv-p03 --gpus all --memory=4g -p 8000:8000 --restart unless-stopped convolucion-servicio:p03
 
 # 4. Comprobar (healthy cuando termina de arrancar)
 docker ps --filter name=conv-p03
@@ -59,6 +60,9 @@ docker rm -f conv-p03
 Entorno completo para el informe (anfitrión + imagen + commit): `despliegue/entorno.sh`.
 
 ## Despliegue
+
+El servicio no tiene autenticación ni límite de solicitudes: cualquiera en la red puede usar la GPU. Se deja abierto
+solo mientras dura la demostración (`--memory=4g` acota la memoria del contenedor).
 
 Se despliega en la laptop de Jordy (sin costo de nube), con acceso desde otro equipo de la red.
 
@@ -90,7 +94,7 @@ laptop (`ip -4 addr`). Se comprueba desde el otro equipo con `curl http://<IP>:8
   `h2d` ≈ 2 ms, `d2h` ≈ 3.4 ms.
 - `pytest` contra el contenedor: 25 pasan y 1 fallo esperado (ver `pruebas/README.md`).
 - **Acceso desde otro equipo:** funciona desde un teléfono en la misma red Wi-Fi, con
-  `http://192.168.1.12:8000/api/salud` y la interfaz en `http://192.168.1.12:8000/`.
+  `http://<IP de la laptop>:8000/api/salud` y la interfaz en `http://<IP de la laptop>:8000/`.
 
 ## Construcción desde un clon limpio
 
