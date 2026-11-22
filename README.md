@@ -25,17 +25,17 @@ Cada uno trabaja en su rama y abre un Pull Request hacia `main`. No cambiar el c
 
 ### Bloque 2 — Jordy Romero
 
-- [ ] `Dockerfile`: imagen base CUDA con etiqueta fija (p. ej. `nvidia/cuda:12.x.y-devel-ubuntu24.04`, hace falta `nvcc`
+- [x] `Dockerfile`: imagen base CUDA con etiqueta fija (p. ej. `nvidia/cuda:12.x.y-devel-ubuntu24.04`, hace falta `nvcc`
       porque PyCUDA compila el kernel), Python, `requirements.txt`, y arranque con `gunicorn` (comando de abajo),
       sin depurador ni recarga. `.dockerignore` (sin `.venv`, `datos/*.pgm`, `resultados/`, `.git`).
-- [ ] Distinguir en el informe el controlador del anfitrión (`nvidia-smi`) de la CUDA de la imagen (`nvcc --version`
+- [x] Distinguir en el informe el controlador del anfitrión (`nvidia-smi`) de la CUDA de la imagen (`nvcc --version`
       dentro del contenedor). Configurar NVIDIA Container Toolkit (`nvidia-ctk runtime configure --runtime=docker`).
-- [ ] Comandos exactos: construir, comprobar GPU (`docker run --rm --gpus all <imagen> nvidia-smi`) e iniciar.
+- [x] Comandos exactos: construir, comprobar GPU (`docker run --rm --gpus all <imagen> nvidia-smi`) e iniciar.
       Construir desde un clon limpio y anotar imagen base, versiones, `docker images --digests` y commit.
-- [ ] Despliegue: nube con GPU NVIDIA si hay créditos; si no, la laptop de Michael (RTX 4060) documentando la
+- [x] Despliegue: nube con GPU NVIDIA si hay créditos; si no, la laptop de Michael (RTX 4060) documentando la
       limitación y entrando desde otro equipo de la red. Documentar CPU, RAM, GPU, SO, controlador, Docker,
       Python, PyCUDA y CUDA, puerto y forma de acceso. Evidencia: contenedor corriendo + solicitud que usa PyCUDA.
-- [ ] `pruebas/` (pytest): matriz pequeña y límites (prueba manual de la P02 y una imagen 1001×777),
+- [x] `pruebas/` (pytest): matriz pequeña y límites (prueba manual de la P02 y una imagen 1001×777),
       equivalencia directa–servicio de los tres filtros (error máximo y medio con `/api/resultado/<id>.npy`,
       tolerancia `validacion.TOLERANCIA`), entradas inválidas (archivo no imagen, demasiado grande, filtro
       desconocido, máscara no permitida → código y mensaje, y que el servicio siga respondiendo) y aislamiento
