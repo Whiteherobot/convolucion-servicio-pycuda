@@ -8,3 +8,6 @@ datos/*.jpg
 tmp/
 resultados/temporales/
 .DS_Store
+resultados/pytest_*.txt
+resultados/build.log
+resultados/nvidia-smi_contenedor.txt

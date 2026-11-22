@@ -45,6 +45,11 @@ Cada uno trabaja en su rama y abre un Pull Request hacia `main`. No cambiar el c
 el contenedor, más 2 fallos esperados que son del Bloque 1, ver el recuadro de abajo). Comandos, entorno y decisiones: [`despliegue/README.md`](despliegue/README.md) y
 [`pruebas/README.md`](pruebas/README.md). Probado desde un teléfono en la red y construido sin caché desde un clon limpio.
 
+> [!NOTE]
+> **Resuelto en `bloque-3-experimentos`:** los tres parches de abajo se aplicaron tal cual en
+> `app/modelo/solicitudes.py` (también en `ruta_resultado()`) y se quitaron las dos marcas `xfail`.
+> El recuadro queda como registro de la revisión.
+
 > [!WARNING]
 > **PENDIENTES PARA MICHAEL (Bloque 1).** La revisión del Bloque 2 encontró tres errores en `app/modelo/solicitudes.py`.
 > Cada uno trae el parche propuesto y cómo comprobarlo. Hace falta **quitar la marca `xfail`** de la prueba
@@ -103,6 +108,9 @@ el contenedor, más 2 fallos esperados que son del Bloque 1, ver el recuadro de 
       hilos, bloques, repetición, concurrencia, todos los tiempos en ms, estado y entorno. Registro de errores.
 - [ ] Gráficas, informe PDF (preguntas de análisis, firmas, enlace al repo y commit) y diapositivas.
 
+**Estado del Bloque 3:** scripts listos y probados sin GPU (`experimentos/`); falta la corrida en la laptop de
+Jordy, y con ella las gráficas, el informe final (`informe/informe.tex`) y las diapositivas.
+
 ## Contrato (bloque 1, para los bloques 2 y 3)
 
 Arranque del servicio. Un solo proceso: el contexto CUDA vive en un único hilo trabajador que atiende la GPU
@@ -155,7 +163,19 @@ gunicorn -w 1 --threads 8 -b 0.0.0.0:8000 "app.servidor:crear_app()"
 curl -F imagen=@datos/imagen_2000.pgm -F filtro=media -F mascara=9 http://localhost:8000/api/procesar
 ```
 
-Docker, despliegue y experimentos: ver las secciones que agreguen los bloques 2 y 3.
+Docker y despliegue: [`despliegue/README.md`](despliegue/README.md). Pruebas: [`pruebas/README.md`](pruebas/README.md).
+
+## Experimentos
+
+Todo en un comando, en el equipo con GPU (detalle en [`experimentos/README.md`](experimentos/README.md)):
+
+```bash
+bash experimentos/ejecutar_todo.sh     # imágenes, imagen Docker, servicio, pytest, validación y experimentos
+python experimentos/graficas.py        # tablas y gráficas del informe desde resultados/<corrida>/
+```
+
+Cada corrida queda en `resultados/<fecha-hora>/`: `entorno.json` (equipo, versiones, imagen y commit),
+`mediciones.csv`, `rondas.csv`, `validacion.csv`, `evidencia/`, `pytest.txt`, registros y `resumen.csv`.
 
 ## Licencia
 
