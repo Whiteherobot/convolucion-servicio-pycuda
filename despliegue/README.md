@@ -89,8 +89,21 @@ laptop (`ip -4 addr`). Se comprueba desde el otro equipo con `curl http://<IP>:8
 - Solicitud real por el servicio en contenedor: media 9×9 sobre `imagen_2000.pgm`, `kernel` ≈ 0.9 ms,
   `h2d` ≈ 2 ms, `d2h` ≈ 3.4 ms.
 - `pytest` contra el contenedor: 25 pasan y 1 fallo esperado (ver `pruebas/README.md`).
+- **Acceso desde otro equipo:** funciona desde un teléfono en la misma red Wi-Fi, con
+  `http://192.168.1.12:8000/api/salud` y la interfaz en `http://192.168.1.12:8000/`.
 
-## Pendiente de confirmar
+## Construcción desde un clon limpio
 
-- Acceso desde otro equipo de la red.
-- Construcción desde un clon limpio del commit final (anotar commit y `docker images --digests`).
+Clon nuevo de la rama `bloque-2-docker`, construido con `docker build --no-cache` (sin reutilizar capas):
+
+| | |
+|---|---|
+| Commit | `bb95932` |
+| Imagen base | `nvidia/cuda:13.4.3-devel-ubuntu24.04` (`sha256:5626a7d0ecafe3e7c115a452f6b05f20f214f8509346196a7835b205dc5b7fd9`) |
+| Imagen construida | `convolucion-servicio:p03-limpio`, `sha256:ea0ca126916cfb4f4bf183a18c54316a3e666174dadca3089ffa5dbd54a2de92` |
+| Tamaño | 13.8 GB |
+| nvcc / Python / PyCUDA | 13.4.92 / 3.12.3 / 2026.1 |
+| Resultado | contenedor `healthy`; `pytest`: 25 pasan y 1 fallo esperado |
+
+El digest cambia en cada construcción (las capas llevan marcas de tiempo), así que no sirve para comparar
+dos builds: lo que identifica la versión es el commit y el digest de la imagen base.
