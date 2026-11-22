@@ -41,6 +41,35 @@ Cada uno trabaja en su rama y abre un Pull Request hacia `main`. No cambiar el c
       desconocido, máscara no permitida → código y mensaje, y que el servicio siga respondiendo) y aislamiento
       (dos solicitudes distintas a la vez reciben cada una su resultado; con la cola llena responde 503).
 
+**Estado del Bloque 2:** `Dockerfile`, `.dockerignore`, `pruebas/` y `despliegue/` listos (25 pruebas pasan contra
+el contenedor). Comandos, entorno y decisiones: [`despliegue/README.md`](despliegue/README.md) y
+[`pruebas/README.md`](pruebas/README.md). Falta acceso desde otro equipo y construir desde un clon limpio.
+
+> [!WARNING]
+> **PENDIENTE PARA MICHAEL (Bloque 1) — una imagen truncada responde 500 en vez de 400.**
+>
+> `validar()` solo lee la cabecera, así que el archivo corrupto pasa y falla después, al decodificarlo en la GPU
+> (`Falla de procesamiento GPU: image file is truncated`). Corrección propuesta, en `_trabajador` de
+> `app/modelo/solicitudes.py` (reemplaza la línea `arreglo = decodificar(trabajo["datos"])`):
+>
+> ```python
+> try:
+>     arreglo = decodificar(trabajo["datos"])
+> except Exception:
+>     raise ErrorSolicitud(400, "El archivo no es una imagen válida")
+> ```
+>
+> No decodifica dos veces, así que no altera los tiempos del servidor. **Cómo verificarlo:**
+> `pytest pruebas/test_entradas_invalidas.py::test_imagen_truncada_responde_400` (con el servicio arriba).
+> Hoy esa prueba está marcada `xfail(strict=True)`: al corregirlo pasará a fallar, y entonces hay que
+> **quitarle la marca `@pytest.mark.xfail`**.
+
+> [!NOTE]
+> **Para Michael y Andrés:** con `gunicorn --threads 4` solo entran 4 solicitudes a la vez y la cola (4 en espera +
+> 1 en la GPU) no se llena por HTTP: el resto espera en el socket y todas responden 200 (medido con 12
+> simultáneas). El 503 por cola llena solo se alcanza con la app en el mismo proceso. Detalle en
+> [`pruebas/README.md`](pruebas/README.md).
+
 ### Bloque 3 — Andrés Morocho
 
 - [ ] `experimentos/cliente.py`: cliente HTTP que mide con `time.perf_counter()` desde el envío hasta tener el PNG
