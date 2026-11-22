@@ -42,7 +42,7 @@ Cada uno trabaja en su rama y abre un Pull Request hacia `main`. No cambiar el c
       (dos solicitudes distintas a la vez reciben cada una su resultado; con la cola llena responde 503).
 
 **Estado del Bloque 2:** `Dockerfile`, `.dockerignore`, `pruebas/` y `despliegue/` listos (25 pruebas pasan contra
-el contenedor). Comandos, entorno y decisiones: [`despliegue/README.md`](despliegue/README.md) y
+el contenedor, más 2 fallos esperados que son del Bloque 1, ver el recuadro de abajo). Comandos, entorno y decisiones: [`despliegue/README.md`](despliegue/README.md) y
 [`pruebas/README.md`](pruebas/README.md). Probado desde un teléfono en la red y construido sin caché desde un clon limpio.
 
 > [!WARNING]
