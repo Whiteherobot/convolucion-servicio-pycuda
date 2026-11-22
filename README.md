@@ -46,11 +46,13 @@ el contenedor). Comandos, entorno y decisiones: [`despliegue/README.md`](desplie
 [`pruebas/README.md`](pruebas/README.md). Probado desde un teléfono en la red y construido sin caché desde un clon limpio.
 
 > [!WARNING]
-> **PENDIENTE PARA MICHAEL (Bloque 1) — una imagen truncada responde 500 en vez de 400.**
+> **PENDIENTES PARA MICHAEL (Bloque 1).** La revisión del Bloque 2 encontró tres errores en `app/modelo/solicitudes.py`.
+> Cada uno trae el parche propuesto y cómo comprobarlo. Hace falta **quitar la marca `xfail`** de la prueba
+> correspondiente cuando quede corregido.
 >
-> `validar()` solo lee la cabecera, así que el archivo corrupto pasa y falla después, al decodificarlo en la GPU
-> (`Falla de procesamiento GPU: image file is truncated`). Corrección propuesta, en `_trabajador` de
-> `app/modelo/solicitudes.py` (reemplaza la línea `arreglo = decodificar(trabajo["datos"])`):
+> **1. Una imagen truncada responde 500 en vez de 400.** `validar()` solo lee la cabecera, así que el archivo
+> corrupto falla después, en la GPU (`Falla de procesamiento GPU: image file is truncated`). En `_trabajador`,
+> reemplaza `arreglo = decodificar(trabajo["datos"])` por:
 >
 > ```python
 > try:
@@ -59,16 +61,33 @@ el contenedor). Comandos, entorno y decisiones: [`despliegue/README.md`](desplie
 >     raise ErrorSolicitud(400, "El archivo no es una imagen válida")
 > ```
 >
-> No decodifica dos veces, así que no altera los tiempos del servidor. **Cómo verificarlo:**
-> `pytest pruebas/test_entradas_invalidas.py::test_imagen_truncada_responde_400` (con el servicio arriba).
-> Hoy esa prueba está marcada `xfail(strict=True)`: al corregirlo pasará a fallar, y entonces hay que
-> **quitarle la marca `@pytest.mark.xfail`**.
-
-> [!NOTE]
-> **Para Michael y Andrés:** con `gunicorn --threads 4` solo entran 4 solicitudes a la vez y la cola (4 en espera +
-> 1 en la GPU) no se llena por HTTP: el resto espera en el socket y todas responden 200 (medido con 12
-> simultáneas). El 503 por cola llena solo se alcanza con la app en el mismo proceso. Detalle en
-> [`pruebas/README.md`](pruebas/README.md).
+> No decodifica dos veces, así que no altera los tiempos del servidor.
+> Prueba: `pytest pruebas/test_entradas_invalidas.py::test_imagen_truncada_responde_400` (`xfail` estricto).
+>
+> **2. `limpiar_viejos()` falla si dos hilos borran el mismo archivo vencido** (`FileNotFoundError` → 500, y también
+> puede tumbar `/api/salud`). Se reprodujo: 8 hilos y 1000 archivos vencidos. Se llama al inicio de cada ruta.
+>
+> ```python
+> def limpiar_viejos(self):
+>     ahora = time.time()
+>     for archivo in Path(self.directorio).glob("*"):
+>         try:
+>             if ahora - archivo.stat().st_mtime > VIDA_RESULTADO_S:
+>                 archivo.unlink()
+>         except FileNotFoundError:
+>             pass  # otro hilo ya lo borró
+> ```
+>
+> `ruta_resultado()` tiene el mismo problema entre `getmtime` y `unlink`: devolver `None` si falta el archivo.
+> Prueba: `pytest pruebas/test_limpieza.py` (`xfail`).
+>
+> **3. `enviar()` espera sin límite:** `trabajo["evento"].wait()`. Si el trabajador de la GPU se cuelga, los 8
+> hilos de gunicorn quedan bloqueados y el servicio deja de responder, incluido el healthcheck. Propuesta:
+> `if not trabajo["evento"].wait(timeout=120): raise ErrorSolicitud(503, "El procesamiento tardó demasiado")`.
+> Sin prueba automática (hay que simular un trabajador colgado).
+>
+> *Recomendado (menor):* `Falla de procesamiento GPU: ` + `str(error)` devuelve al cliente el texto de la excepción
+> interna; mejor un mensaje fijo y dejar el detalle en el registro del servidor.
 
 ### Bloque 3 — Andrés Morocho
 
