@@ -43,7 +43,7 @@ Cada uno trabaja en su rama y abre un Pull Request hacia `main`. No cambiar el c
 
 **Estado del Bloque 2:** `Dockerfile`, `.dockerignore`, `pruebas/` y `despliegue/` listos (25 pruebas pasan contra
 el contenedor). Comandos, entorno y decisiones: [`despliegue/README.md`](despliegue/README.md) y
-[`pruebas/README.md`](pruebas/README.md). Falta acceso desde otro equipo y construir desde un clon limpio.
+[`pruebas/README.md`](pruebas/README.md). Probado desde un teléfono en la red y construido sin caché desde un clon limpio.
 
 > [!WARNING]
 > **PENDIENTE PARA MICHAEL (Bloque 1) — una imagen truncada responde 500 en vez de 400.**
