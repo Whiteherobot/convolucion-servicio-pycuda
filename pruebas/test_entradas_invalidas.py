@@ -1,4 +1,4 @@
-"""Entradas inválidas: código, mensaje y que el servicio siga respondiendo. Bloque 2 - Jordy Romero."""
+"""Entradas inválidas: código, mensaje y servicio vivo. Bloque 2 - Jordy Romero."""
 import io
 
 import numpy as np
@@ -44,8 +44,7 @@ def test_entrada_invalida_se_rechaza_y_el_servicio_sigue(archivo, filtro, mascar
     assert enviar(PNG_VALIDO, "media", 3).status_code == 200
 
 
-@pytest.mark.xfail(strict=True, raises=AssertionError, reason="Bloque 1: validar() solo lee la cabecera; la imagen truncada "
-                   "falla recién en la GPU y responde 500 en vez de 400")
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason="Bloque 1: la imagen truncada responde 500 en vez de 400")
 def test_imagen_truncada_responde_400():
     respuesta = enviar(PNG_VALIDO[:100], "media", 3)
     assert respuesta.status_code == 400

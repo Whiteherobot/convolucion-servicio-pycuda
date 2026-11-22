@@ -1,8 +1,4 @@
-"""Herramientas comunes de las pruebas. Bloque 2 - Jordy Romero.
-
-Las pruebas hablan con el servicio por HTTP (contenedor o gunicorn en el anfitrión):
-SERVICIO_URL cambia la dirección, por defecto http://localhost:8000.
-"""
+"""Herramientas comunes de las pruebas por HTTP (SERVICIO_URL, por defecto localhost:8000). Bloque 2 - Jordy Romero."""
 import io
 import os
 
@@ -16,7 +12,7 @@ SEMILLA = 2026
 
 
 def imagen_aleatoria(ancho: int, alto: int) -> np.ndarray:
-    """Valores enteros 0..255; la semilla fija hace la prueba repetible."""
+    """Valores enteros 0..255 con semilla fija."""
     generador = np.random.default_rng(SEMILLA)
     return generador.integers(0, 256, size=(alto, ancho)).astype(np.float32)
 
@@ -35,14 +31,14 @@ def enviar(datos: bytes, filtro: str = "media", mascara: int = 3, **extra):
 
 
 def descargar_crudo(respuesta_json: dict) -> np.ndarray:
-    """Baja el resultado float32 sin recortar (.npy) de una solicitud correcta."""
+    """Baja el resultado float32 sin recortar (.npy)."""
     crudo = requests.get(URL + respuesta_json["url_crudo"], timeout=120)
     return np.load(io.BytesIO(crudo.content))
 
 
 @pytest.fixture(scope="session", autouse=True)
 def servicio():
-    """Las pruebas se saltan si el servicio no está arriba o no tiene GPU."""
+    """Salta las pruebas si el servicio no está arriba o no tiene GPU."""
     try:
         salud = requests.get(URL + "/api/salud", timeout=5).json()
     except requests.ConnectionError:
@@ -54,6 +50,6 @@ def servicio():
 
 @pytest.fixture(scope="session")
 def gpu():
-    """PyCUDA directo en este proceso, para comparar contra lo que devuelve el servicio."""
+    """PyCUDA directo en este proceso, para comparar con el servicio."""
     from app.modelo.pycuda_conv import ConvolucionPyCUDA
     return ConvolucionPyCUDA()

@@ -1,4 +1,4 @@
-"""Imagen 1001x777, que no es múltiplo de 128/256/512 hilos. Bloque 2 - Jordy Romero."""
+"""Imagen 1001x777, no múltiplo de los hilos por bloque. Bloque 2 - Jordy Romero."""
 import math
 
 import pytest
@@ -23,5 +23,5 @@ def test_cobertura_total_con_cualquier_numero_de_hilos(gpu, hilos):
     salida = descargar_crudo(datos)
     maximo, _ = errores(esperado, salida)
     assert maximo < TOLERANCIA
-    # El último píxel es el que cubre el bloque parcial.
+    # el último píxel cae en el bloque parcial
     assert salida[-1, -1] == pytest.approx(esperado[-1, -1], abs=TOLERANCIA)

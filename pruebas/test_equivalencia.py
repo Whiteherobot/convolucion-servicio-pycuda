@@ -1,7 +1,4 @@
-"""PyCUDA directo contra el servicio, mismo procesar. Bloque 2 - Jordy Romero.
-
-Se compara el .npy (float32 sin recortar) con lo que da PyCUDA en este proceso.
-"""
+"""PyCUDA directo contra el .npy del servicio. Bloque 2 - Jordy Romero."""
 from pathlib import Path
 
 import pytest

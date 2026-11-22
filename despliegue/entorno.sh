@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # Anota el entorno del equipo y de la imagen para el informe. Bloque 2 - Jordy Romero.
-# --entrypoint evita el banner de NVIDIA que ensucia la salida.
-# Uso: despliegue/entorno.sh [imagen]   (por defecto convolucion-servicio:p03)
+# Uso: despliegue/entorno.sh [imagen]
 imagen="${1:-convolucion-servicio:p03}"
 raiz="$(cd "$(dirname "$0")/.." && pwd)"
 
@@ -17,6 +16,7 @@ echo "Docker:     $(docker --version)"
 echo "NVIDIA Container Toolkit: $(nvidia-ctk --version | head -1)"
 
 echo
+# --entrypoint evita el banner de NVIDIA
 echo "## Imagen $imagen (CUDA de la imagen, no del anfitrión)"
 echo "Id:         $(docker image inspect --format '{{.Id}}' "$imagen")"
 echo "nvcc:       $(docker run --rm --entrypoint nvcc "$imagen" --version | grep release)"
