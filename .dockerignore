@@ -1,8 +1,11 @@
 .git
 .venv
-__pycache__
-*.pyc
+**/__pycache__
+**/*.pyc
 .pytest_cache
+.env*
+*.pem
+*.key
 datos/*.pgm
 resultados/
 informe/
