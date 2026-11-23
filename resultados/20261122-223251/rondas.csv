@@ -1,0 +1,11 @@
+corrida,entorno,concurrencia,ronda,solicitudes,exitosas,fallidas,duracion_ms,exitosas_por_s
+20261122-223251,NVIDIA GeForce RTX 3080 Laptop GPU | controlador 620.73.04 | CUDA imagen 13.4.92 | commit c892339,1,1,1,1,0,1368.486,0.7307
+20261122-223251,NVIDIA GeForce RTX 3080 Laptop GPU | controlador 620.73.04 | CUDA imagen 13.4.92 | commit c892339,1,2,1,1,0,1360.345,0.7351
+20261122-223251,NVIDIA GeForce RTX 3080 Laptop GPU | controlador 620.73.04 | CUDA imagen 13.4.92 | commit c892339,1,3,1,1,0,1351.914,0.7397
+20261122-223251,NVIDIA GeForce RTX 3080 Laptop GPU | controlador 620.73.04 | CUDA imagen 13.4.92 | commit c892339,1,4,1,1,0,1365.219,0.7325
+20261122-223251,NVIDIA GeForce RTX 3080 Laptop GPU | controlador 620.73.04 | CUDA imagen 13.4.92 | commit c892339,1,5,1,1,0,1357.65,0.7366
+20261122-223251,NVIDIA GeForce RTX 3080 Laptop GPU | controlador 620.73.04 | CUDA imagen 13.4.92 | commit c892339,2,1,2,2,0,2710.396,0.7379
+20261122-223251,NVIDIA GeForce RTX 3080 Laptop GPU | controlador 620.73.04 | CUDA imagen 13.4.92 | commit c892339,2,2,2,2,0,2714.867,0.7367
+20261122-223251,NVIDIA GeForce RTX 3080 Laptop GPU | controlador 620.73.04 | CUDA imagen 13.4.92 | commit c892339,2,3,2,2,0,2726.926,0.7334
+20261122-223251,NVIDIA GeForce RTX 3080 Laptop GPU | controlador 620.73.04 | CUDA imagen 13.4.92 | commit c892339,2,4,2,2,0,2727.631,0.7332
+20261122-223251,NVIDIA GeForce RTX 3080 Laptop GPU | controlador 620.73.04 | CUDA imagen 13.4.92 | commit c892339,2,5,2,2,0,2730.673,0.7324

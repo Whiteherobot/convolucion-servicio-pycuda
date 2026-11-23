@@ -1,0 +1,2 @@
+# Solo para graficas.py (en el equipo que hace el informe); no entra en la imagen Docker.
+matplotlib==3.11.2

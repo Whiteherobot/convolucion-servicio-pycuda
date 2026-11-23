@@ -1,0 +1,14 @@
+.git
+.venv
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.env*
+*.pem
+*.key
+datos/*.pgm
+resultados/
+informe/
+pruebas/
+despliegue/
+experimentos/

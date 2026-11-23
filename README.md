@@ -25,21 +25,25 @@ Cada uno trabaja en su rama y abre un Pull Request hacia `main`. No cambiar el c
 
 ### Bloque 2 — Jordy Romero
 
-- [ ] `Dockerfile`: imagen base CUDA con etiqueta fija (p. ej. `nvidia/cuda:12.x.y-devel-ubuntu24.04`, hace falta `nvcc`
+- [x] `Dockerfile`: imagen base CUDA con etiqueta fija (p. ej. `nvidia/cuda:12.x.y-devel-ubuntu24.04`, hace falta `nvcc`
       porque PyCUDA compila el kernel), Python, `requirements.txt`, y arranque con `gunicorn` (comando de abajo),
       sin depurador ni recarga. `.dockerignore` (sin `.venv`, `datos/*.pgm`, `resultados/`, `.git`).
-- [ ] Distinguir en el informe el controlador del anfitrión (`nvidia-smi`) de la CUDA de la imagen (`nvcc --version`
+- [x] Distinguir en el informe el controlador del anfitrión (`nvidia-smi`) de la CUDA de la imagen (`nvcc --version`
       dentro del contenedor). Configurar NVIDIA Container Toolkit (`nvidia-ctk runtime configure --runtime=docker`).
-- [ ] Comandos exactos: construir, comprobar GPU (`docker run --rm --gpus all <imagen> nvidia-smi`) e iniciar.
+- [x] Comandos exactos: construir, comprobar GPU (`docker run --rm --gpus all <imagen> nvidia-smi`) e iniciar.
       Construir desde un clon limpio y anotar imagen base, versiones, `docker images --digests` y commit.
-- [ ] Despliegue: nube con GPU NVIDIA si hay créditos; si no, la laptop de Michael (RTX 4060) documentando la
+- [x] Despliegue: nube con GPU NVIDIA si hay créditos; si no, la laptop de Jordy (RTX 3080 Laptop) documentando la
       limitación y entrando desde otro equipo de la red. Documentar CPU, RAM, GPU, SO, controlador, Docker,
       Python, PyCUDA y CUDA, puerto y forma de acceso. Evidencia: contenedor corriendo + solicitud que usa PyCUDA.
-- [ ] `pruebas/` (pytest): matriz pequeña y límites (prueba manual de la P02 y una imagen 1001×777),
+- [x] `pruebas/` (pytest): matriz pequeña y límites (prueba manual de la P02 y una imagen 1001×777),
       equivalencia directa–servicio de los tres filtros (error máximo y medio con `/api/resultado/<id>.npy`,
       tolerancia `validacion.TOLERANCIA`), entradas inválidas (archivo no imagen, demasiado grande, filtro
       desconocido, máscara no permitida → código y mensaje, y que el servicio siga respondiendo) y aislamiento
       (dos solicitudes distintas a la vez reciben cada una su resultado; con la cola llena responde 503).
+
+**Estado del Bloque 2:** `Dockerfile`, `.dockerignore`, `pruebas/` y `despliegue/` listos (pruebas pasando contra
+el contenedor; los tres errores que encontró la revisión en `app/modelo/solicitudes.py` ya están corregidos). Comandos, entorno y decisiones: [`despliegue/README.md`](despliegue/README.md) y
+[`pruebas/README.md`](pruebas/README.md). Probado desde un teléfono en la red y construido sin caché desde un clon limpio.
 
 ### Bloque 3 — Andrés Morocho
 
@@ -55,12 +59,17 @@ Cada uno trabaja en su rama y abre un Pull Request hacia `main`. No cambiar el c
       hilos, bloques, repetición, concurrencia, todos los tiempos en ms, estado y entorno. Registro de errores.
 - [ ] Gráficas, informe PDF (preguntas de análisis, firmas, enlace al repo y commit) y diapositivas.
 
+**Estado del Bloque 3:** scripts listos y probados sin GPU (`experimentos/`); falta la corrida en la laptop de
+Jordy, y con ella las gráficas, el informe final (`informe/informe.tex`) y las diapositivas.
+
 ## Contrato (bloque 1, para los bloques 2 y 3)
 
-Arranque del servicio (un solo proceso: el contexto CUDA vive en un único hilo trabajador de la GPU):
+Arranque del servicio. Un solo proceso: el contexto CUDA vive en un único hilo trabajador que atiende la GPU
+en orden de llegada (FIFO). Los 8 hilos de gunicorn reciben solicitudes; como máximo 1 está en la GPU y 4 esperan,
+la siguiente recibe 503:
 
 ```bash
-gunicorn -w 1 --threads 4 -b 0.0.0.0:8000 "app.servidor:crear_app()"
+gunicorn -w 1 --threads 8 -b 0.0.0.0:8000 "app.servidor:crear_app()"
 ```
 
 | Ruta | Qué hace |
@@ -100,12 +109,24 @@ python -m app.directo datos/imagen_4000.pgm resultados/media9.png media 9 --hilo
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 # imágenes de prueba: ver datos/README.md
-gunicorn -w 1 --threads 4 -b 0.0.0.0:8000 "app.servidor:crear_app()"
+gunicorn -w 1 --threads 8 -b 0.0.0.0:8000 "app.servidor:crear_app()"
 # http://localhost:8000
 curl -F imagen=@datos/imagen_2000.pgm -F filtro=media -F mascara=9 http://localhost:8000/api/procesar
 ```
 
-Docker, despliegue y experimentos: ver las secciones que agreguen los bloques 2 y 3.
+Docker y despliegue: [`despliegue/README.md`](despliegue/README.md). Pruebas: [`pruebas/README.md`](pruebas/README.md).
+
+## Experimentos
+
+Todo en un comando, en el equipo con GPU (detalle en [`experimentos/README.md`](experimentos/README.md)):
+
+```bash
+bash experimentos/ejecutar_todo.sh     # imágenes, imagen Docker, servicio, pytest, validación y experimentos
+python experimentos/graficas.py        # tablas y gráficas del informe desde resultados/<corrida>/
+```
+
+Cada corrida queda en `resultados/<fecha-hora>/`: `entorno.json` (equipo, versiones, imagen y commit),
+`mediciones.csv`, `rondas.csv`, `validacion.csv`, `evidencia/`, `pytest.txt`, registros y `resumen.csv`.
 
 ## Licencia
 

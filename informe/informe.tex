@@ -1,0 +1,624 @@
+% Informe de la práctica 03. En Overleaf: copiar este archivo como main.tex.
+% Subir a la carpeta images/ de Overleaf:
+%   figuras (resultados/graficas/): evidencia.png, integracion.png, resolucion.png, filtros.png, concurrencia.png
+%   tablas  (resultados/tablas/):   tabla_entorno.tex, tabla_validacion.tex, tabla_estado.tex, tabla_frio.tex,
+%           tabla_integracion.tex, tabla_resolucion.tex, tabla_filtros.tex, tabla_concurrencia.tex
+% Tablas y figuras se generan con: python experimentos/graficas.py resultados/<corrida>
+% La bibliografía es biblist.bib. Lo marcado con \pendiente{} se completa antes de la entrega.
+% Compilar en el repo: cd informe && tectonic -X compile informe.tex
+
+\documentclass[12pt]{article}
+\usepackage[spanish,es-noshorthands,es-nodecimaldot]{babel}
+\usepackage{natbib}
+\usepackage{url}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\graphicspath{{images/}{../resultados/graficas/}}   % Overleaf: images/; repo: ../resultados/graficas/
+\usepackage{parskip}
+\usepackage{fancyhdr}
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{caption}
+\usepackage[hidelinks]{hyperref}
+\usepackage[compact]{titlesec}
+
+\usepackage{vmargin}
+\setmarginsrb{3 cm}{2.5 cm}{2.5 cm}{2.5 cm} {1 cm}{1.5 cm}{1 cm}{1.5 cm}
+
+\title{Servicio web de convolución de imágenes con PyCUDA y Docker}
+\author{Michael Lata \\ Jordy Romero \\ Andres Morocho}
+\date{\today}
+
+\makeatletter
+\let\thetitle\@title
+\let\theauthor\@author
+\let\thedate\@date
+\makeatother
+
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{Servicio web de convolución con PyCUDA y Docker}
+\cfoot{\thepage}
+
+\newcommand{\pendiente}[1]{\textcolor{red}{\textbf{[PENDIENTE: #1]}}}
+% Tablas generadas por experimentos/graficas.py: en Overleaf en images/; en el repo en ../resultados/tablas/.
+\newcommand{\tabla}[1]{%
+  \IfFileExists{images/#1}{\input{images/#1}}{%
+  \IfFileExists{../resultados/tablas/#1}{\input{../resultados/tablas/#1}}{%
+  \IfFileExists{#1}{\input{#1}}{\pendiente{falta #1}}}}}
+% Figuras generadas por el mismo script; si aún no existen, se marca el pendiente en su lugar.
+\newcommand{\figura}[2]{%
+  \IfFileExists{images/#2}{\includegraphics[width=#1\linewidth]{#2}}{%
+  \IfFileExists{../resultados/graficas/#2}{\includegraphics[width=#1\linewidth]{#2}}{%
+  \pendiente{falta #2}}}}
+\newcommand{\repo}{\url{https://github.com/Whiteherobot/convolucion-servicio-pycuda}}
+\newcommand{\repoAnterior}{\url{https://github.com/Whiteherobot/convolucion-pycuda}}
+
+\lstset{basicstyle=\ttfamily\small, columns=fullflexible, frame=single, breaklines=true,
+        keywordstyle=\bfseries, literate={á}{{\'a}}1 {é}{{\'e}}1 {í}{{\'i}}1
+        {ó}{{\'o}}1 {ú}{{\'u}}1 {ñ}{{\~n}}1 {→}{{$\to$}}1 {×}{{$\times$}}1}
+
+\setcounter{tocdepth}{1}
+
+\begin{document}
+
+\renewcommand{\tablename}{Tabla}
+\renewcommand{\figurename}{Figura }
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%  INICIO PORTADA  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{titlepage}
+    \centering
+    \IfFileExists{images/logo.png}{\includegraphics[width=0.5\linewidth]{logo.png}}{}\\[1.0 cm]
+    \textsc{\LARGE Universidad Politécnica Salesiana}\\[2.0 cm]
+    \textsc{\Large CP}\\[0.5 cm]
+    \textsc{\large Computación Paralela}\\[0.5 cm]
+    \rule{\linewidth}{0.2 mm} \\[0.4 cm]
+    { \huge \bfseries \thetitle}\\
+    \rule{\linewidth}{0.2 mm} \\[1.5 cm]
+
+ \begin{flushleft} \large
+    \emph{Autores:}\\
+    \theauthor
+ \end{flushleft}
+
+  \begin{flushleft} \large
+    \emph{Profesores:}\\
+    Ing. Gabriel Leon \\
+  \end{flushleft}
+
+  \begin{flushleft} \normalsize
+    Repositorio: \repo\\
+    Commit medido: \texttt{c892339} (mismo código que \texttt{f988bfc}; solo agrega resultados)\\
+    Commit de entrega: \texttt{\pendiente{hash del commit etiquetado entrega}}\\
+    Práctica 02: \repoAnterior, etiqueta \texttt{entrega}, commit \texttt{1c04426}
+  \end{flushleft}
+
+  \vfill
+
+  {\large \thedate}
+
+\end{titlepage}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%    FIN  PORTADA  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\tableofcontents
+\vspace{1em}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%    INICIO   TEXTO   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Introducción}
+
+En la práctica 02 se aplicaron tres filtros de convolución (media, nitidez y laplaciano) a imágenes en
+escala de grises de 2000, 4000 y 6000 píxeles de lado, con un kernel CUDA propio ejecutado desde
+Python mediante PyCUDA \cite{klockner2012,pycudadoc}. Esta práctica convierte ese mismo cálculo en un
+servicio web: el usuario sube una imagen desde el navegador, elige el filtro y recibe el resultado
+procesado en la GPU. El servicio se empaqueta en una imagen Docker con acceso a la GPU mediante NVIDIA
+Container Toolkit \cite{nvidiactk} y se despliega en un equipo con GPU NVIDIA. Después se valida que
+el resultado del servicio coincide con el de PyCUDA directo y se mide de punta a punta: cuánto cuesta
+la GPU, cuánto el servicio y cuánto la comunicación, y qué cambia con la resolución, la máscara y la
+concurrencia.
+
+\begin{center}
+\texttt{Navegador $\to$ Flask (gunicorn) $\to$ cola GPU $\to$ PyCUDA $\to$ GPU $\to$ PNG $\to$ navegador}
+\end{center}
+
+\section{Relación con la práctica 02}
+
+El código reutilizado proviene de \repoAnterior, etiqueta \texttt{entrega} (commit \texttt{1c04426});
+se copió del commit \texttt{d5ab309}, que es el mismo código reagrupado en carpetas. Sin cambios se
+conservan, en \texttt{app/modelo/}: el kernel \texttt{kernels/convolucion.cu} (un píxel por hilo,
+distribución en X, ceros fuera de la imagen, \texttt{float32}), las máscaras de media
+$3\times3$, $9\times9$ y $21\times21$, nitidez $3\times3$ y laplaciano $3\times3$ con los mismos
+coeficientes \cite{gonzalez2018}, la clase \texttt{ConvolucionPyCUDA} (contexto, compilación,
+memoria, transferencias y eventos CUDA), la lectura y escritura de imágenes, el recorte a 0--255 solo
+al final y el cálculo de errores con su tolerancia. Las imágenes de prueba son las mismas y se
+comprueban con su hash (\texttt{datos/SHA256SUMS}).
+
+Lo nuevo es la aplicación web, la gestión de solicitudes, el contenedor, el despliegue y la
+evaluación. No se repite la comparación C/C++, CUDA C, Python y PyCUDA de la práctica 02.
+
+\section{Arquitectura del servicio}
+
+El código sigue una separación modelo--vista--controlador. \texttt{app/modelo/} contiene el cálculo
+(lo reutilizado) y la gestión de solicitudes (\texttt{solicitudes.py}); \texttt{app/controlador/} las
+rutas HTTP; \texttt{app/vista/} la página y su JavaScript. El mismo \texttt{procesar()} de
+\texttt{app/modelo/procesamiento.py} lo usan el servicio y la ejecución directa
+(\texttt{python -m app.directo}), de modo que la lógica HTTP queda separada de la convolución.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Contrato HTTP del servicio.}\label{tab:contrato}
+\begin{tabular}{p{4.2cm}p{10.3cm}}
+\toprule
+Ruta & Qué hace \\
+\midrule
+\texttt{GET /} & Interfaz: subir imagen, elegir filtro y máscara, ver original y resultado, descargar. \\
+\texttt{POST /api/procesar} & \texttt{multipart/form-data}: \texttt{imagen}, \texttt{filtro}
+(\texttt{media}, \texttt{nitidez}, \texttt{laplaciano}), \texttt{mascara} (3, 9 o 21; solo media),
+\texttt{hilos} (opcional, 256). Responde el identificador, las dimensiones, hilos y bloques, los
+tiempos en ms y las URL del resultado. \\
+\texttt{GET /api/resultado/<id>.png} & Resultado recortado a 0--255, para ver o descargar. \\
+\texttt{GET /api/resultado/<id>.npy} & Resultado \texttt{float32} sin recortar, para comparar. \\
+\texttt{GET /api/salud} & GPU, \texttt{contexto\_ms}, \texttt{compilacion\_ms}, cola y límites. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Los errores se devuelven como \texttt{\{"error": "mensaje"\}} con 400 (entrada inválida), 413
+(archivo o imagen demasiado grande), 503 (cola llena o GPU no disponible) o 500 (falla del
+procesamiento). Los límites son: archivo de hasta 40\,MB, imagen de hasta $6000\times6000$, formato
+real PNG, JPEG, PGM/PPM, BMP o TIFF (se comprueba con Pillow, no por la extensión) y cola de 4. Cada
+solicitud recibe un identificador aleatorio (\texttt{uuid4}) que nombra sus archivos de resultado,
+así que ninguna sobrescribe ni recibe la imagen de otra; los resultados se borran a los 10 minutos.
+La interfaz desactiva el botón mientras procesa para evitar solicitudes duplicadas.
+
+\section{Integración con PyCUDA y gestión de solicitudes}
+
+En PyCUDA el contexto CUDA queda asociado al hilo que lo crea, mientras que gunicorn atiende cada
+solicitud en un hilo distinto. Por eso el servicio corre en un solo proceso
+(\texttt{gunicorn -w 1 --threads 8}) con un único hilo trabajador dueño del contexto: al arrancar
+crea \texttt{ConvolucionPyCUDA} (inicializa el contexto y compila el kernel con \texttt{nvcc}) y
+después atiende una cola acotada en orden de llegada (FIFO). Los hilos HTTP validan la entrada,
+encolan el trabajo y esperan su resultado. Como máximo una solicitud está en la GPU y cuatro esperan;
+la siguiente recibe 503 de inmediato, lo que hace el rechazo medible. La inicialización se registra
+aparte (\texttt{contexto\_ms} y \texttt{compilacion\_ms} en \texttt{/api/salud}); la compilación se
+hace sin caché para que su tiempo sea el costo real de \texttt{nvcc}.
+
+En cada solicitud, el trabajador decodifica la imagen a \texttt{float32}, copia la imagen y la máscara
+a la GPU, lanza el kernel, copia el resultado de vuelta y codifica el PNG. Las copias y el kernel se
+miden con eventos CUDA, sincronizando antes de leerlos; la memoria del anfitrión es paginable, y la
+reserva y liberación en la GPU quedan fuera de esos tiempos, como en la práctica 02. Si la GPU no está
+disponible al arrancar, el servicio responde 503 con el motivo y nunca calcula en la CPU.
+
+\section{Docker y despliegue}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Decisiones del \texttt{Dockerfile} (detalle en \texttt{despliegue/README.md}).}\label{tab:docker}
+\begin{tabular}{p{5.2cm}p{9.3cm}}
+\toprule
+Decisión & Motivo \\
+\midrule
+Base \texttt{nvidia/cuda:13.4.3-devel-ubuntu24.04} fijada con su digest & PyCUDA compila el kernel al
+arrancar y necesita \texttt{nvcc}; las variantes \texttt{runtime} y \texttt{base} no lo traen. El
+digest no se mueve aunque la etiqueta cambie. \\
+\texttt{python3-dev} y \texttt{build-essential} & \texttt{pip} compila PyCUDA al instalarlo. \\
+Entorno virtual en \texttt{/opt/venv} & Ubuntu 24.04 no permite \texttt{pip} fuera de uno. \\
+Usuario \texttt{servicio} sin privilegios & El servicio no necesita ser root. \\
+\texttt{gunicorn -w 1 --threads 8}, sin depurador ni recarga & Un proceso: un contexto CUDA. \\
+\texttt{HEALTHCHECK} sobre \texttt{/api/salud} & Sano solo cuando la GPU ya está cargada. \\
+\texttt{.dockerignore} & Excluye \texttt{.git}, \texttt{.venv}, imágenes de prueba, resultados,
+pruebas e informe. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+El controlador NVIDIA y CUDA de la imagen son componentes distintos. El controlador vive en el
+anfitrión (\texttt{nvidia-smi}) y el contenedor accede a él a través de NVIDIA Container Toolkit
+\cite{nvidiactk}; el toolkit CUDA con \texttt{nvcc} va dentro de la imagen. Para que funcione, el
+controlador debe soportar una versión de CUDA igual o mayor que la de la imagen \cite{cudacompat}. Por
+esa razón la imagen se construye y se mide en el mismo equipo: un controlador que solo soporte hasta
+CUDA 13.3 no arranca esta imagen. Los comandos exactos son:
+
+\begin{lstlisting}[language=bash]
+docker build -t convolucion-servicio:p03 .
+docker run --rm --gpus all convolucion-servicio:p03 nvidia-smi       # el contenedor ve la GPU
+docker run -d --name conv-p03 --gpus all --memory=4g -p 8000:8000 convolucion-servicio:p03
+\end{lstlisting}
+
+No se contó con créditos de nube con GPU, así que el servicio se desplegó en la laptop de Jordy Romero,
+con acceso desde otro equipo de la misma red: se comprobó desde un teléfono abriendo la interfaz y
+\texttt{/api/salud} en \texttt{http://<IP de la laptop>:8000}. La imagen se construyó sin caché desde
+un clon limpio; el contenedor quedó en estado \texttt{healthy} y una solicitud de media $9\times9$
+sobre la imagen de 2000 píxeles se procesó en la GPU. La Tabla~\ref{tab:entorno} resume el equipo y
+las versiones, registrados automáticamente al empezar la corrida de mediciones.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Equipo de despliegue y medición (de \texttt{entorno.json} de la corrida).}\label{tab:entorno}
+\tabla{tabla_entorno.tex}
+\end{table}
+
+\section{Validación}
+
+Las pruebas de \texttt{pruebas/} (pytest) hablan con el servicio por HTTP, así que se ejecutaron contra
+el contenedor. Cubren la matriz pequeña de la práctica 02 (laplaciano sobre $5\times5$, con valores
+calculados a mano y bordes con ceros), una imagen de $1001\times777$ con 128, 256 y 512 hilos (tamaño,
+bloques y cobertura hasta el último píxel), la equivalencia entre PyCUDA directo y el \texttt{.npy}
+del servicio para los tres filtros (error absoluto máximo y medio antes del recorte, bajo la
+tolerancia de la práctica 02), entradas inválidas (archivo que no es imagen, formato no permitido,
+archivo o imagen demasiado grandes, filtro, máscara e hilos inválidos: código, mensaje y servicio
+vivo) y aislamiento (dos solicitudes simultáneas reciben cada una su resultado). Con 12 solicitudes a
+la vez se obtuvieron 5 respuestas 200 y 7 respuestas 503, y el servicio siguió respondiendo.
+
+En la revisión se encontraron tres errores del servicio: una imagen truncada respondía 500 en vez de
+400, la limpieza de resultados vencidos fallaba si dos hilos borraban el mismo archivo y la espera
+de una solicitud no tenía tiempo máximo. Se corrigieron antes de medir: la imagen que no se puede
+decodificar responde 400, la limpieza ignora los archivos que otro hilo ya borró y una solicitud espera
+como máximo 120\,s antes de responder 503. Las dos pruebas que documentaban los errores pasaron a ser
+pruebas normales. En la corrida de mediciones, las 27 pruebas pasaron contra el contenedor medido (\texttt{27 passed in
+8.38s}, archivo \texttt{pytest.txt}).
+
+La corrida de mediciones repite la equivalencia sobre la imagen real de $2000\times2000$ y guarda los
+errores (Tabla~\ref{tab:validacion}): para cada filtro, la salida de PyCUDA directo en el anfitrión se
+compara con el \texttt{.npy} del servicio, antes del recorte, con la misma función y tolerancia
+($10^{-3}$) de la práctica 02. La Figura~\ref{fig:evidencia} muestra los PNG que devolvió el servicio.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Error absoluto entre PyCUDA directo y el servicio, antes del recorte ($2000\times2000$).}\label{tab:validacion}
+\tabla{tabla_validacion.tex}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\figura{1.0}{evidencia.png}
+\caption{Imagen original de $2000\times2000$ y resultado del servicio para los tres filtros. Abajo, el
+recuadro rojo ampliado. El laplaciano se ve casi negro porque sus valores quedan cerca de cero o son
+negativos y el PNG los recorta a 0--255.}\label{fig:evidencia}
+\end{figure}
+
+\section{Metodología}\label{sec:metodologia}
+
+Se varía un factor a la vez con 256 hilos por bloque fijos (Tabla~\ref{tab:experimentos}). Cada
+configuración tiene una solicitud de calentamiento, que se guarda pero no entra en las estadísticas,
+y 5 repeticiones; se reportan la mediana y el coeficiente de variación (CV). El arranque en frío se
+mide aparte: se reinicia el contenedor tres veces y se toma la primera solicitud de cada arranque. Toda
+la corrida la ejecuta \texttt{experimentos/correr.py}, que antes verifica el hash de las imágenes, que
+el servicio tenga GPU y anota el entorno; los fallos quedan en el CSV con su estado y en
+\texttt{errores.log}, sin estimar valores.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Experimentos.}\label{tab:experimentos}
+\begin{tabular}{p{2.6cm}p{5.6cm}p{6.2cm}}
+\toprule
+Experimento & Configuración & Se compara \\
+\midrule
+Integración & Media $9\times9$, $4000\times4000$ & PyCUDA directo en el anfitrión, directo en un
+contenedor de la misma imagen y a través del servicio \\
+Resolución & Media $9\times9$; 2000, 4000 y 6000 & Kernel, procesamiento del servidor y total del cliente \\
+Filtros y máscara & $4000\times4000$; media 3, 9 y 21; nitidez; laplaciano & Tiempos del servicio \\
+Concurrencia & Media $9\times9$, $4000\times4000$; 1 y 2 clientes simultáneos, 5 rondas & Latencia,
+espera en cola y solicitudes exitosas por segundo \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Cada tiempo tiene un alcance distinto. \emph{Kernel}, \emph{CPU$\to$GPU} y \emph{GPU$\to$CPU} se miden
+con eventos CUDA. \emph{Decodificación}, \emph{codificación PNG}, \emph{espera en cola} y
+\emph{servidor} (desde que llega la solicitud hasta tener el PNG, incluida la escritura del resultado)
+usan el reloj monotónico del servidor. \emph{Cliente} va desde el envío hasta tener el PNG descargado,
+con el reloj del cliente; nunca se restan marcas de tiempo de relojes distintos, solo duraciones. El
+cliente corre en el mismo equipo que el servidor (\texttt{localhost}), así que la red no entra en las
+mediciones. En concurrencia, el rendimiento es el número de solicitudes exitosas dividido por la
+duración total de la ronda.
+
+\section{Resultados}
+
+La Tabla~\ref{tab:estado} cuenta las solicitudes correctas y con error de cada experimento.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Estado de las solicitudes de la corrida (incluye calentamientos).}\label{tab:estado}
+\tabla{tabla_estado.tex}
+\end{table}
+
+\subsection{Arranque en frío}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Arranque en frío en ms: tiempo hasta que el servicio ve la GPU tras \texttt{docker restart},
+contexto CUDA, compilación del kernel y primera solicitud, frente a la mediana estable.}\label{tab:frio}
+\tabla{tabla_frio.tex}
+\end{table}
+
+Tras cada reinicio, el servicio tardó entre 1092 y 1673\,ms en estar listo con la GPU. De ese tiempo,
+crear el contexto CUDA tomó entre 111 y 118\,ms y compilar el kernel entre 204 y 246\,ms; el resto
+corresponde a levantar el contenedor y el servidor. La primera solicitud de cada arranque tardó entre
+1354 y 1369\,ms en el servidor, igual que la mediana estable de la misma configuración (1368\,ms en la
+Tabla~\ref{tab:integracion}). Es decir, el arranque en frío no penaliza la primera solicitud: el
+contexto y la compilación se hacen al iniciar el servicio, antes de que el healthcheck lo marque como
+listo, y no al llegar la primera imagen.
+
+\subsection{Integración y contenedor}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Media $9\times9$ sobre $4000\times4000$: medianas en ms por modo de ejecución.}\label{tab:integracion}
+\resizebox{\linewidth}{!}{\tabla{tabla_integracion.tex}}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\figura{0.95}{integracion.png}
+\caption{Desglose del tiempo por modo. Cada segmento es la mediana de su componente; al final, la
+mediana del total del cliente (o de la GPU en los modos directos).}\label{fig:integracion}
+\end{figure}
+
+La parte de GPU es prácticamente la misma en los tres modos: unos 9.4--9.6\,ms de CPU$\to$GPU,
+2.1--2.25\,ms de kernel y 12.7--13.3\,ms de GPU$\to$CPU, con un total de 24.4--25.7\,ms. Llevar el
+cálculo al servicio no lo hace más lento en la GPU. Lo que cambia es todo lo que rodea al cálculo: a
+través del servicio la solicitud tarda 1368\,ms en el servidor y 1377\,ms en el cliente, unas 53
+veces el tiempo de GPU. La diferencia entre servidor y cliente (unos 9\,ms) es el HTTP local y la
+descarga del PNG. Los CV altos de los modos directos (79.6\,\% y 43.8\,\%) no reflejan un
+comportamiento general: se deben a una o dos repeticiones con una copia GPU$\to$CPU anómala (84.9\,ms
+en el anfitrión; 45.1 y 31.4\,ms en el contenedor, frente a unos 13\,ms en el resto). Por eso se
+reporta la mediana.
+
+\subsection{Resolución}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Servicio, media $9\times9$: medianas en ms por resolución.}\label{tab:resolucion}
+\resizebox{\linewidth}{!}{\tabla{tabla_resolucion.tex}}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\figura{0.95}{resolucion.png}
+\caption{Desglose del tiempo del servicio por resolución.}\label{fig:resolucion}
+\end{figure}
+
+Al pasar de $2000\times2000$ a $4000\times4000$ y $6000\times6000$ los píxeles crecen 4 y 9 veces. El
+kernel crece en proporción similar (0.605, 2.25 y 4.98\,ms; 3.7 y 8.2 veces) y lo mismo la parte de
+GPU (5.38, 25.6 y 55.8\,ms), dominada por las copias. La codificación PNG también escala con los
+píxeles (312, 1281 y 2855\,ms) y es, con diferencia, el componente más grande: entre el 91\,\% y el
+94\,\% del tiempo del servidor, mientras que el kernel no llega al 0.2\,\%. El total del cliente pasa
+de 337 a 1405 y a 3138\,ms. En $6000\times6000$ el CV del cliente sube a 21\,\% porque una repetición
+tardó 4833\,ms con una codificación normal (2855\,ms); el tiempo extra quedó fuera de la GPU, de la
+decodificación y del PNG, y no se identificó su causa.
+
+\subsection{Filtros y tamaño de máscara}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Servicio, $4000\times4000$: medianas en ms por filtro.}\label{tab:filtros}
+\resizebox{\linewidth}{!}{\tabla{tabla_filtros.tex}}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\figura{0.95}{filtros.png}
+\caption{Desglose del tiempo del servicio por filtro y máscara.}\label{fig:filtros}
+\end{figure}
+
+El kernel depende del tamaño de la máscara y no de sus coeficientes: los tres filtros de $3\times3$
+(media, nitidez y laplaciano) tardan 0.51--0.52\,ms. Con la media, pasar de $3\times3$ a $9\times9$ y
+$21\times21$ multiplica las operaciones por píxel por 9 y 49, pero el kernel solo crece 4.4 y 23
+veces (0.512, 2.25 y 11.7\,ms), lo que indica que con máscaras pequeñas el kernel está limitado por
+el acceso a memoria más que por el cálculo. Aun con la máscara de $21\times21$, el kernel es el
+1.1\,\% del tiempo del servidor. El tiempo total lo decide de nuevo la codificación PNG, que varía
+según el contenido de la imagen resultante y no según el costo del filtro: va de 570\,ms (nitidez) a
+2095\,ms (media $3\times3$). Por eso la media $21\times21$, con el kernel más caro, tiene un total
+menor (1041\,ms) que la media $3\times3$ (2195\,ms).
+
+\subsection{Concurrencia}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Media $9\times9$, $4000\times4000$: latencia del cliente (mediana y rango intercuartílico),
+espera en cola y servidor en ms, y solicitudes exitosas por segundo (mediana de las rondas).}\label{tab:concurrencia}
+\tabla{tabla_concurrencia.tex}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\figura{1.0}{concurrencia.png}
+\caption{Izquierda: desglose de la latencia con 1 y 2 clientes. Derecha: rendimiento de cada
+ronda.}\label{fig:concurrencia}
+\end{figure}
+
+Todas las solicitudes terminaron bien (5/5 y 10/10). Con 2 clientes, en cada ronda una solicitud se
+atendió de inmediato (unos 1360\,ms en el servidor) y la otra esperó en la cola entre 1315 y
+1337\,ms, prácticamente lo que tarda la primera, y terminó en unos 2700\,ms. La mediana de 2050\,ms
+y la espera de 658\,ms de la tabla mezclan esos dos grupos, como muestra el rango intercuartílico
+(1388--2724\,ms). El rendimiento no mejora: 0.74 solicitudes exitosas por segundo con 1 cliente y
+0.73 con 2. Duplicar los clientes duplica la duración de la ronda.
+
+\section{Análisis}
+
+\subsection{¿Qué se reutilizó de la práctica 02 y qué cambió al convertirla en servicio?}
+
+Se reutilizaron sin cambios el kernel, las máscaras, la clase de PyCUDA, el manejo de imágenes y la
+validación numérica. Cambió quién crea y usa el contexto CUDA: en la práctica 02 lo hacía el programa
+principal en una sola ejecución; ahora lo crea una vez el hilo trabajador del servicio y lo mantiene
+vivo entre solicitudes, que llegan por HTTP a hilos distintos y se serializan en una cola. Se
+agregaron la validación de entradas, los identificadores por solicitud, la codificación PNG, los
+límites y los códigos de error.
+
+\subsection{¿Se mantiene la equivalencia numérica?}
+
+Sí. En la imagen de $2000\times2000$ el error absoluto máximo y medio entre PyCUDA directo y el
+\texttt{.npy} del servicio fue 0 en los tres filtros (Tabla~\ref{tab:validacion}): el servicio usa el
+mismo kernel, la misma GPU, los mismos datos en \texttt{float32} y la misma configuración de lanzamiento,
+por lo que el resultado es idéntico. Las únicas diferencias aparecen al codificar el PNG, que redondea
+a 8 bits (hasta 0.5 por píxel) y recorta a 0--255; en el laplaciano esto elimina los valores
+negativos, como se ve en la Figura~\ref{fig:evidencia}. Por eso la equivalencia se comprueba con el
+\texttt{.npy} y no con el PNG.
+
+\subsection{¿Cómo se reparte el tiempo entre GPU, preparación, servicio y comunicación?}
+
+En $4000\times4000$ con media $9\times9$, de los 1377\,ms que ve el cliente, la GPU usa unos
+25\,ms: 9.4\,ms en subir la imagen, 2.25\,ms en el kernel y 12.7\,ms en bajar el resultado. La
+preparación en CPU es mayor: 40.5\,ms en decodificar la imagen y 1281\,ms en codificar el PNG. El
+resto del servidor (validación, escritura del resultado) suma unas decenas de milisegundos y la
+comunicación HTTP local unos 9\,ms. Las copias pesan más que el kernel porque los datos viajan en
+\texttt{float32}: 64\,MB de entrada y 64\,MB de salida en $4000\times4000$. El patrón se repite en las
+tres resoluciones: la codificación PNG ocupa más del 90\,\% del tiempo del servidor, así que el
+servicio está limitado por la CPU y no por la GPU.
+
+\subsection{¿Qué diferencias hay entre la ejecución directa y el servicio? ¿Se puede atribuir algo a Docker?}
+
+Entre PyCUDA directo en el anfitrión y en el contenedor, las medianas difieren poco: 25.7 frente a
+24.4\,ms de GPU, y el kernel 2.24 frente a 2.09\,ms. Ambos usan el mismo código y la misma GPU, pero
+el anfitrión tiene CUDA 13.5 y la imagen CUDA 13.4, de modo que el kernel lo compilan versiones
+distintas de \texttt{nvcc}; esa diferencia de unos 0.15\,ms no se puede atribuir a Docker. Con 5
+repeticiones y valores atípicos en las copias, tampoco hay evidencia de una sobrecarga del contenedor
+en la parte de GPU. La diferencia grande está entre ejecución directa y servicio (unos 25\,ms frente a
+1377\,ms) y viene del trabajo que agrega el servicio (decodificar, codificar el PNG, escribir el
+resultado y HTTP), no de Docker.
+
+\subsection{¿Cómo afectan la resolución, la máscara y la concurrencia a la latencia, el rendimiento y la memoria?}
+
+\textbf{Resolución.} La latencia crece casi en proporción al número de píxeles (337, 1405 y
+3138\,ms para 2000, 4000 y 6000) porque todos sus componentes escalan así, sobre todo la codificación
+PNG. \textbf{Máscara.} El kernel crece con la máscara (de 0.512 a 11.7\,ms), pero su efecto en la
+latencia es menor que el del contenido de la imagen resultante sobre el PNG; el filtro más caro en la
+GPU no es el más lento para el cliente. \textbf{Concurrencia.} Con 2 clientes la latencia de la
+solicitud que espera se duplica (unos 2700\,ms) y el rendimiento se mantiene en unas 0.73
+solicitudes/s. \textbf{Memoria.} No se midió la memoria por solicitud; por el tamaño de los datos en
+\texttt{float32}, la entrada y la salida en GPU ocupan unos 32, 128 y 288\,MB en las tres
+resoluciones, poco frente a los 8192\,MiB de la GPU. Con el servicio en reposo, el proceso usaba
+160\,MiB de la GPU (\texttt{nvidia-smi\_anfitrion.txt}).
+
+\subsection{¿Cómo condicionan el contexto CUDA, los trabajadores del servidor y la política de cola lo observado?}
+
+Con un único contexto y un único hilo trabajador, la GPU procesa una solicitud a la vez: dos clientes
+simultáneos no se procesan en paralelo, sino que uno espera en la cola. Con 2 clientes, la solicitud que llega
+segunda espera entre 1315 y 1337\,ms en la cola, lo mismo que tarda en atenderse la primera, y el
+rendimiento queda en 0.73 solicitudes/s frente a 0.74 con un cliente. Los 8 hilos del servidor HTTP
+reciben las solicitudes en paralelo, pero solo encolan el trabajo; la cola admite 4 solicitudes en
+espera además de la que se procesa, y las siguientes reciben 503, como en la prueba de 12 solicitudes
+simultáneas (5 respuestas 200 y 7 respuestas 503). Como el cuello de botella es la codificación PNG en
+CPU y no la GPU, aumentar el rendimiento requeriría paralelizar esa codificación (por ejemplo, con
+varios procesos) más que agregar contextos CUDA.
+
+\subsection{¿Qué límites del equipo, la red o el procedimiento restringen las conclusiones?}
+
+Ver la Sección~\ref{sec:limitaciones}.
+
+\section{Limitaciones}\label{sec:limitaciones}
+
+\begin{itemize}
+\item El servidor es una laptop: la GPU se comparte con la pantalla y puede bajar su frecuencia con
+      la temperatura. Se midió conectada a la corriente y con las aplicaciones cerradas.
+\item El cliente corre en el mismo equipo; las mediciones no incluyen una red real. El acceso desde
+      otro equipo solo se comprobó de forma funcional.
+\item La concurrencia se evaluó con 1 y 2 clientes; con un solo trabajador de GPU, más clientes solo
+      alargan la cola hasta el rechazo con 503.
+\item El servicio no tiene autenticación ni límite de solicitudes por cliente; solo se expone durante
+      la demostración.
+\item Se analiza una sola corrida con 5 repeticiones por configuración. Hubo valores atípicos en
+      las copias GPU$\to$CPU de los modos directos y una repetición lenta en $6000\times6000$, cuyas
+      causas no se identificaron; las medianas los atenúan, pero los CV de esas filas son altos.
+\item No se midió la memoria de GPU ni de CPU por solicitud; solo se estimó por el tamaño de los datos.
+\item La codificación PNG domina el tiempo del servicio, de modo que las latencias reflejan sobre todo
+      el rendimiento de la CPU y del compresor, no el de la GPU.
+\item El registro del servidor muestra cinco avisos de Gunicorn
+      (\texttt{Control server error: Permission denied: '/home/servicio'}) porque el usuario del
+      contenedor no tiene directorio personal. No afectaron a ninguna solicitud.
+\end{itemize}
+
+\section{Conclusiones}
+
+\begin{enumerate}
+\item El cálculo de la práctica 02 se convirtió en servicio sin perder equivalencia: el error frente a
+      PyCUDA directo fue 0 en los tres filtros, y las 27 pruebas automáticas pasaron contra el
+      contenedor medido.
+\item Integrar el cálculo en el servicio y en Docker no cambia el tiempo de GPU (24.4--25.7\,ms en los
+      tres modos). Las pequeñas diferencias entre anfitrión y contenedor no se pueden atribuir a
+      Docker, porque cambian también la versión de CUDA.
+\item El cuello de botella del servicio es la codificación PNG en CPU: ocupa más del 90\,\% del tiempo
+      del servidor (1281 de 1368\,ms en $4000\times4000$), mientras que el kernel tarda 2.25\,ms. La
+      latencia escala con los píxeles (337 a 3138\,ms) y depende más del contenido de la imagen
+      resultante que del tamaño de la máscara.
+\item Con un único contexto CUDA y un único trabajador, las solicitudes se atienden en serie: con 2
+      clientes una espera unos 1.3\,s en la cola y el rendimiento se mantiene en 0.73 solicitudes/s.
+      Para atender más clientes conviene paralelizar la codificación antes que la GPU.
+\end{enumerate}
+
+\section{Contribuciones}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{p{3cm}p{11.2cm}}
+\toprule
+Integrante & Aporte \\
+\midrule
+Michael Lata & Aplicación web: servicio HTTP con Flask, contrato de la API, validación de entradas,
+cola de la GPU con un único contexto CUDA, interfaz y ejecución directa (\texttt{app.directo}). \\
+Jordy Romero & \texttt{Dockerfile} y \texttt{.dockerignore}, NVIDIA Container Toolkit, despliegue en su
+laptop con acceso desde la red, construcción desde un clon limpio, pruebas con pytest y revisión del
+servicio. Ejecución de las mediciones. \\
+Andres Morocho & Protocolo de medición, cliente HTTP y scripts de los experimentos con verificación
+del entorno, CSV, tablas y gráficas, informe y presentación. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Reproducibilidad}
+
+El código está en \repo. Las mediciones se tomaron con el commit indicado en la portada, registrado
+en \texttt{resultados/<corrida>/entorno.json} junto con el identificador de la imagen Docker. Las
+imágenes de prueba se generan como indica \texttt{datos/README.md}. En un equipo con GPU NVIDIA,
+Docker y NVIDIA Container Toolkit:
+
+\begin{lstlisting}[language=bash]
+git clone https://github.com/Whiteherobot/convolucion-servicio-pycuda && cd convolucion-servicio-pycuda
+docker build -t convolucion-servicio:p03 .
+docker run -d --name conv-p03 --gpus all --memory=4g -p 8000:8000 convolucion-servicio:p03
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+.venv/bin/python experimentos/correr.py        # resultados/<corrida>/
+.venv/bin/python experimentos/graficas.py      # tablas y gráficas
+\end{lstlisting}
+
+\section*{Firmas}
+\addcontentsline{toc}{section}{Firmas}
+\vspace{1.5cm}
+\noindent
+\begin{tabular}{ccc}
+\rule{4.3cm}{0.4pt} & \rule{4.3cm}{0.4pt} & \rule{4.3cm}{0.4pt} \\
+Michael Lata & Jordy Romero & Andres Morocho \\
+\end{tabular}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%     FIN   TEXTO     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\bibliographystyle{plain}
+\bibliography{biblist}
+
+\end{document}
