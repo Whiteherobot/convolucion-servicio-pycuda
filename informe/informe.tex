@@ -95,7 +95,7 @@
 
   \begin{flushleft} \normalsize
     Repositorio: \repo\\
-    Commit medido: \texttt{\pendiente{commit de entorno.json}}\\
+    Commit medido: \texttt{c892339} (mismo código que \texttt{f988bfc}; solo agrega resultados)\\
     Commit de entrega: \texttt{\pendiente{hash del commit etiquetado entrega}}\\
     Práctica 02: \repoAnterior, etiqueta \texttt{entrega}, commit \texttt{1c04426}
   \end{flushleft}
@@ -269,7 +269,8 @@ En la revisión se encontraron tres errores del servicio: una imagen truncada re
 de una solicitud no tenía tiempo máximo. Se corrigieron antes de medir: la imagen que no se puede
 decodificar responde 400, la limpieza ignora los archivos que otro hilo ya borró y una solicitud espera
 como máximo 120\,s antes de responder 503. Las dos pruebas que documentaban los errores pasaron a ser
-pruebas normales. \pendiente{resultado final de pytest, de \texttt{pytest.txt} de la corrida}
+pruebas normales. En la corrida de mediciones, las 27 pruebas pasaron contra el contenedor medido (\texttt{27 passed in
+8.38s}, archivo \texttt{pytest.txt}).
 
 La corrida de mediciones repite la equivalencia sobre la imagen real de $2000\times2000$ y guarda los
 errores (Tabla~\ref{tab:validacion}): para cada filtro, la salida de PyCUDA directo en el anfitrión se
@@ -349,7 +350,13 @@ contexto CUDA, compilación del kernel y primera solicitud, frente a la mediana 
 \tabla{tabla_frio.tex}
 \end{table}
 
-\pendiente{interpretar la Tabla~\ref{tab:frio}}
+Tras cada reinicio, el servicio tardó entre 1092 y 1673\,ms en estar listo con la GPU. De ese tiempo,
+crear el contexto CUDA tomó entre 111 y 118\,ms y compilar el kernel entre 204 y 246\,ms; el resto
+corresponde a levantar el contenedor y el servidor. La primera solicitud de cada arranque tardó entre
+1354 y 1369\,ms en el servidor, igual que la mediana estable de la misma configuración (1368\,ms en la
+Tabla~\ref{tab:integracion}). Es decir, el arranque en frío no penaliza la primera solicitud: el
+contexto y la compilación se hacen al iniciar el servicio, antes de que el healthcheck lo marque como
+listo, y no al llegar la primera imagen.
 
 \subsection{Integración y contenedor}
 
@@ -367,7 +374,15 @@ contexto CUDA, compilación del kernel y primera solicitud, frente a la mediana 
 mediana del total del cliente (o de la GPU en los modos directos).}\label{fig:integracion}
 \end{figure}
 
-\pendiente{interpretar la Tabla~\ref{tab:integracion} y la Figura~\ref{fig:integracion}}
+La parte de GPU es prácticamente la misma en los tres modos: unos 9.4--9.6\,ms de CPU$\to$GPU,
+2.1--2.25\,ms de kernel y 12.7--13.3\,ms de GPU$\to$CPU, con un total de 24.4--25.7\,ms. Llevar el
+cálculo al servicio no lo hace más lento en la GPU. Lo que cambia es todo lo que rodea al cálculo: a
+través del servicio la solicitud tarda 1368\,ms en el servidor y 1377\,ms en el cliente, unas 53
+veces el tiempo de GPU. La diferencia entre servidor y cliente (unos 9\,ms) es el HTTP local y la
+descarga del PNG. Los CV altos de los modos directos (79.6\,\% y 43.8\,\%) no reflejan un
+comportamiento general: se deben a una o dos repeticiones con una copia GPU$\to$CPU anómala (84.9\,ms
+en el anfitrión; 45.1 y 31.4\,ms en el contenedor, frente a unos 13\,ms en el resto). Por eso se
+reporta la mediana.
 
 \subsection{Resolución}
 
@@ -384,7 +399,14 @@ mediana del total del cliente (o de la GPU en los modos directos).}\label{fig:in
 \caption{Desglose del tiempo del servicio por resolución.}\label{fig:resolucion}
 \end{figure}
 
-\pendiente{interpretar la Tabla~\ref{tab:resolucion} y la Figura~\ref{fig:resolucion}}
+Al pasar de $2000\times2000$ a $4000\times4000$ y $6000\times6000$ los píxeles crecen 4 y 9 veces. El
+kernel crece en proporción similar (0.605, 2.25 y 4.98\,ms; 3.7 y 8.2 veces) y lo mismo la parte de
+GPU (5.38, 25.6 y 55.8\,ms), dominada por las copias. La codificación PNG también escala con los
+píxeles (312, 1281 y 2855\,ms) y es, con diferencia, el componente más grande: entre el 91\,\% y el
+94\,\% del tiempo del servidor, mientras que el kernel no llega al 0.2\,\%. El total del cliente pasa
+de 337 a 1405 y a 3138\,ms. En $6000\times6000$ el CV del cliente sube a 21\,\% porque una repetición
+tardó 4833\,ms con una codificación normal (2855\,ms); el tiempo extra quedó fuera de la GPU, de la
+decodificación y del PNG, y no se identificó su causa.
 
 \subsection{Filtros y tamaño de máscara}
 
@@ -401,7 +423,15 @@ mediana del total del cliente (o de la GPU en los modos directos).}\label{fig:in
 \caption{Desglose del tiempo del servicio por filtro y máscara.}\label{fig:filtros}
 \end{figure}
 
-\pendiente{interpretar la Tabla~\ref{tab:filtros} y la Figura~\ref{fig:filtros}}
+El kernel depende del tamaño de la máscara y no de sus coeficientes: los tres filtros de $3\times3$
+(media, nitidez y laplaciano) tardan 0.51--0.52\,ms. Con la media, pasar de $3\times3$ a $9\times9$ y
+$21\times21$ multiplica las operaciones por píxel por 9 y 49, pero el kernel solo crece 4.4 y 23
+veces (0.512, 2.25 y 11.7\,ms), lo que indica que con máscaras pequeñas el kernel está limitado por
+el acceso a memoria más que por el cálculo. Aun con la máscara de $21\times21$, el kernel es el
+1.1\,\% del tiempo del servidor. El tiempo total lo decide de nuevo la codificación PNG, que varía
+según el contenido de la imagen resultante y no según el costo del filtro: va de 570\,ms (nitidez) a
+2095\,ms (media $3\times3$). Por eso la media $21\times21$, con el kernel más caro, tiene un total
+menor (1041\,ms) que la media $3\times3$ (2195\,ms).
 
 \subsection{Concurrencia}
 
@@ -420,7 +450,12 @@ espera en cola y servidor en ms, y solicitudes exitosas por segundo (mediana de 
 ronda.}\label{fig:concurrencia}
 \end{figure}
 
-\pendiente{interpretar la Tabla~\ref{tab:concurrencia} y la Figura~\ref{fig:concurrencia}}
+Todas las solicitudes terminaron bien (5/5 y 10/10). Con 2 clientes, en cada ronda una solicitud se
+atendió de inmediato (unos 1360\,ms en el servidor) y la otra esperó en la cola entre 1315 y
+1337\,ms, prácticamente lo que tarda la primera, y terminó en unos 2700\,ms. La mediana de 2050\,ms
+y la espera de 658\,ms de la tabla mezclan esos dos grupos, como muestra el rango intercuartílico
+(1388--2724\,ms). El rendimiento no mejora: 0.74 solicitudes exitosas por segundo con 1 cliente y
+0.73 con 2. Duplicar los clientes duplica la duración de la ronda.
 
 \section{Análisis}
 
@@ -435,27 +470,60 @@ límites y los códigos de error.
 
 \subsection{¿Se mantiene la equivalencia numérica?}
 
-\pendiente{con la Tabla~\ref{tab:validacion}: diferencias del cálculo (\texttt{.npy}) frente a las de la
-codificación PNG, que recorta a 0--255 y redondea a 8 bits}
+Sí. En la imagen de $2000\times2000$ el error absoluto máximo y medio entre PyCUDA directo y el
+\texttt{.npy} del servicio fue 0 en los tres filtros (Tabla~\ref{tab:validacion}): el servicio usa el
+mismo kernel, la misma GPU, los mismos datos en \texttt{float32} y la misma configuración de lanzamiento,
+por lo que el resultado es idéntico. Las únicas diferencias aparecen al codificar el PNG, que redondea
+a 8 bits (hasta 0.5 por píxel) y recorta a 0--255; en el laplaciano esto elimina los valores
+negativos, como se ve en la Figura~\ref{fig:evidencia}. Por eso la equivalencia se comprueba con el
+\texttt{.npy} y no con el PNG.
 
 \subsection{¿Cómo se reparte el tiempo entre GPU, preparación, servicio y comunicación?}
 
-\pendiente{con la Figura~\ref{fig:integracion} y la Tabla~\ref{tab:resolucion}}
+En $4000\times4000$ con media $9\times9$, de los 1377\,ms que ve el cliente, la GPU usa unos
+25\,ms: 9.4\,ms en subir la imagen, 2.25\,ms en el kernel y 12.7\,ms en bajar el resultado. La
+preparación en CPU es mayor: 40.5\,ms en decodificar la imagen y 1281\,ms en codificar el PNG. El
+resto del servidor (validación, escritura del resultado) suma unas decenas de milisegundos y la
+comunicación HTTP local unos 9\,ms. Las copias pesan más que el kernel porque los datos viajan en
+\texttt{float32}: 64\,MB de entrada y 64\,MB de salida en $4000\times4000$. El patrón se repite en las
+tres resoluciones: la codificación PNG ocupa más del 90\,\% del tiempo del servidor, así que el
+servicio está limitado por la CPU y no por la GPU.
 
 \subsection{¿Qué diferencias hay entre la ejecución directa y el servicio? ¿Se puede atribuir algo a Docker?}
 
-\pendiente{comparar directo en el anfitrión y en el contenedor (mismo código, misma GPU; difiere la
-CUDA del anfitrión y la de la imagen) antes de atribuir una diferencia a Docker}
+Entre PyCUDA directo en el anfitrión y en el contenedor, las medianas difieren poco: 25.7 frente a
+24.4\,ms de GPU, y el kernel 2.24 frente a 2.09\,ms. Ambos usan el mismo código y la misma GPU, pero
+el anfitrión tiene CUDA 13.5 y la imagen CUDA 13.4, de modo que el kernel lo compilan versiones
+distintas de \texttt{nvcc}; esa diferencia de unos 0.15\,ms no se puede atribuir a Docker. Con 5
+repeticiones y valores atípicos en las copias, tampoco hay evidencia de una sobrecarga del contenedor
+en la parte de GPU. La diferencia grande está entre ejecución directa y servicio (unos 25\,ms frente a
+1377\,ms) y viene del trabajo que agrega el servicio (decodificar, codificar el PNG, escribir el
+resultado y HTTP), no de Docker.
 
 \subsection{¿Cómo afectan la resolución, la máscara y la concurrencia a la latencia, el rendimiento y la memoria?}
 
-\pendiente{con las Tablas~\ref{tab:resolucion}, \ref{tab:filtros} y \ref{tab:concurrencia}}
+\textbf{Resolución.} La latencia crece casi en proporción al número de píxeles (337, 1405 y
+3138\,ms para 2000, 4000 y 6000) porque todos sus componentes escalan así, sobre todo la codificación
+PNG. \textbf{Máscara.} El kernel crece con la máscara (de 0.512 a 11.7\,ms), pero su efecto en la
+latencia es menor que el del contenido de la imagen resultante sobre el PNG; el filtro más caro en la
+GPU no es el más lento para el cliente. \textbf{Concurrencia.} Con 2 clientes la latencia de la
+solicitud que espera se duplica (unos 2700\,ms) y el rendimiento se mantiene en unas 0.73
+solicitudes/s. \textbf{Memoria.} No se midió la memoria por solicitud; por el tamaño de los datos en
+\texttt{float32}, la entrada y la salida en GPU ocupan unos 32, 128 y 288\,MB en las tres
+resoluciones, poco frente a los 8192\,MiB de la GPU. Con el servicio en reposo, el proceso usaba
+160\,MiB de la GPU (\texttt{nvidia-smi\_anfitrion.txt}).
 
 \subsection{¿Cómo condicionan el contexto CUDA, los trabajadores del servidor y la política de cola lo observado?}
 
 Con un único contexto y un único hilo trabajador, la GPU procesa una solicitud a la vez: dos clientes
-simultáneos no se procesan en paralelo, sino que uno espera en la cola. \pendiente{cuantificar con la
-espera en cola y el rendimiento de la Tabla~\ref{tab:concurrencia}}
+simultáneos no se procesan en paralelo, sino que uno espera en la cola. Con 2 clientes, la solicitud que llega
+segunda espera entre 1315 y 1337\,ms en la cola, lo mismo que tarda en atenderse la primera, y el
+rendimiento queda en 0.73 solicitudes/s frente a 0.74 con un cliente. Los 8 hilos del servidor HTTP
+reciben las solicitudes en paralelo, pero solo encolan el trabajo; la cola admite 4 solicitudes en
+espera además de la que se procesa, y las siguientes reciben 503, como en la prueba de 12 solicitudes
+simultáneas (5 respuestas 200 y 7 respuestas 503). Como el cuello de botella es la codificación PNG en
+CPU y no la GPU, aumentar el rendimiento requeriría paralelizar esa codificación (por ejemplo, con
+varios procesos) más que agregar contextos CUDA.
 
 \subsection{¿Qué límites del equipo, la red o el procedimiento restringen las conclusiones?}
 
@@ -472,12 +540,34 @@ Ver la Sección~\ref{sec:limitaciones}.
       alargan la cola hasta el rechazo con 503.
 \item El servicio no tiene autenticación ni límite de solicitudes por cliente; solo se expone durante
       la demostración.
-\item \pendiente{otras limitaciones observadas en la corrida}
+\item Se analiza una sola corrida con 5 repeticiones por configuración. Hubo valores atípicos en
+      las copias GPU$\to$CPU de los modos directos y una repetición lenta en $6000\times6000$, cuyas
+      causas no se identificaron; las medianas los atenúan, pero los CV de esas filas son altos.
+\item No se midió la memoria de GPU ni de CPU por solicitud; solo se estimó por el tamaño de los datos.
+\item La codificación PNG domina el tiempo del servicio, de modo que las latencias reflejan sobre todo
+      el rendimiento de la CPU y del compresor, no el de la GPU.
+\item El registro del servidor muestra cinco avisos de Gunicorn
+      (\texttt{Control server error: Permission denied: '/home/servicio'}) porque el usuario del
+      contenedor no tiene directorio personal. No afectaron a ninguna solicitud.
 \end{itemize}
 
 \section{Conclusiones}
 
-\pendiente{tres o cuatro conclusiones con cifras de las tablas}
+\begin{enumerate}
+\item El cálculo de la práctica 02 se convirtió en servicio sin perder equivalencia: el error frente a
+      PyCUDA directo fue 0 en los tres filtros, y las 27 pruebas automáticas pasaron contra el
+      contenedor medido.
+\item Integrar el cálculo en el servicio y en Docker no cambia el tiempo de GPU (24.4--25.7\,ms en los
+      tres modos). Las pequeñas diferencias entre anfitrión y contenedor no se pueden atribuir a
+      Docker, porque cambian también la versión de CUDA.
+\item El cuello de botella del servicio es la codificación PNG en CPU: ocupa más del 90\,\% del tiempo
+      del servidor (1281 de 1368\,ms en $4000\times4000$), mientras que el kernel tarda 2.25\,ms. La
+      latencia escala con los píxeles (337 a 3138\,ms) y depende más del contenido de la imagen
+      resultante que del tamaño de la máscara.
+\item Con un único contexto CUDA y un único trabajador, las solicitudes se atienden en serie: con 2
+      clientes una espera unos 1.3\,s en la cola y el rendimiento se mantiene en 0.73 solicitudes/s.
+      Para atender más clientes conviene paralelizar la codificación antes que la GPU.
+\end{enumerate}
 
 \section{Contribuciones}
 
