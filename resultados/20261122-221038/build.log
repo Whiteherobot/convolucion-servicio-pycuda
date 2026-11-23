@@ -1,0 +1,51 @@
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.26kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/nvidia/cuda:13.4.3-devel-ubuntu24.04@sha256:5626a7d0ecafe3e7c115a452f6b05f20f214f8509346196a7835b205dc5b7fd9
+#2 DONE 0.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 177B done
+#3 DONE 0.0s
+
+#4 [1/8] FROM docker.io/nvidia/cuda:13.4.3-devel-ubuntu24.04@sha256:5626a7d0ecafe3e7c115a452f6b05f20f214f8509346196a7835b205dc5b7fd9
+#4 resolve docker.io/nvidia/cuda:13.4.3-devel-ubuntu24.04@sha256:5626a7d0ecafe3e7c115a452f6b05f20f214f8509346196a7835b205dc5b7fd9 0.0s done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 34.26kB done
+#5 DONE 0.0s
+
+#6 [2/8] RUN apt-get update     && apt-get install -y --no-install-recommends python3 python3-venv python3-dev build-essential     && rm -rf /var/lib/apt/lists/*
+#6 CACHED
+
+#7 [3/8] RUN python3 -m venv /opt/venv
+#7 CACHED
+
+#8 [4/8] WORKDIR /servicio
+#8 CACHED
+
+#9 [5/8] COPY requirements.txt .
+#9 CACHED
+
+#10 [6/8] RUN pip install --no-cache-dir -r requirements.txt
+#10 CACHED
+
+#11 [7/8] COPY app ./app
+#11 DONE 0.2s
+
+#12 [8/8] RUN useradd --system --no-create-home servicio
+#12 DONE 0.2s
+
+#13 exporting to image
+#13 exporting layers 0.1s done
+#13 exporting manifest sha256:81743e46b22f97de36b1b07b2d8185f8bdc7415268f40a74f21d14c026ec30b9 done
+#13 exporting config sha256:48fb89c48de49f9e3f25d11cf91517e60b898b78dadf392220c5ec17e4799acd 0.0s done
+#13 exporting attestation manifest sha256:55ff03cb26e5cf1930c50596ba54b8ff9971421593c32538389fd2b60a5fc1f1 0.0s done
+#13 exporting manifest list sha256:187f905c4c8fa241157779f6f70aa50438ee48924f324936ce577cdb184261a4 done
+#13 naming to docker.io/library/convolucion-servicio:p03 done
+#13 unpacking to docker.io/library/convolucion-servicio:p03 0.0s done
+#13 DONE 0.2s

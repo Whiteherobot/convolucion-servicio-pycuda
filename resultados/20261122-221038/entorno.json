@@ -1,0 +1,71 @@
+{
+  "fecha": "2026-11-22T22:10:36-05:00",
+  "url_servicio": "http://localhost:8000",
+  "cliente": "mismo equipo que el servidor (localhost)",
+  "anfitrion": {
+    "so": "Linux-7.3.4-1-cachyos-x86_64-with-glibc2.44",
+    "cpu": "11th Gen Intel(R) Core(TM) i7-11800H @ 2.30GHz",
+    "ram": "15.3 GiB",
+    "gpu": "NVIDIA GeForce RTX 3080 Laptop GPU, 8192 MiB",
+    "controlador_nvidia": "620.73.04",
+    "nvcc_anfitrion": "13.5.37",
+    "python_anfitrion": "3.14.10",
+    "pycuda_anfitrion": "2026.1",
+    "docker": "Docker version 29.10.0, build fdd4b8e5da",
+    "nvidia_container_toolkit": "NVIDIA Container Toolkit CLI version 1.20.2"
+  },
+  "imagen": {
+    "nombre": "convolucion-servicio:p03",
+    "id": "sha256:187f905c4c8fa241157779f6f70aa50438ee48924f324936ce577cdb184261a4",
+    "nvcc": "13.4.92",
+    "python": "Python 3.12.3",
+    "pycuda": "2026.1"
+  },
+  "contenedor": "conv-p03",
+  "git": {
+    "commit": "f988bfcfadbae0419731cd4fc0a9f76674ad61b2",
+    "rama": "bloque-3-experimentos",
+    "cambios_sin_commit": false
+  },
+  "salud": {
+    "compilacion_ms": 470.423,
+    "contexto_ms": 210.658,
+    "en_cola": 0,
+    "error": null,
+    "gpu": "NVIDIA GeForce RTX 3080 Laptop GPU",
+    "limites": {
+      "archivo_bytes": 41943040,
+      "formatos": [
+        "BMP",
+        "JPEG",
+        "PNG",
+        "PPM",
+        "TIFF"
+      ],
+      "lado_px": 6000,
+      "vida_resultado_s": 600
+    },
+    "max_cola": 4
+  },
+  "datos_sha256": {
+    "datos/imagen_2000.pgm": "ec3f46816db11a468985f9ff14c235fdde29d9511cd73d3a43610cfacbe96e4f",
+    "datos/imagen_4000.pgm": "241f65f8ac0ba76a7f0f747070570ce3db84e90a6c06b082bfbe4d4a99d357a7",
+    "datos/imagen_6000.pgm": "27787ce18b18a3a188ba8b3f4b1002873927fb859f87ab53bbd1cfd0c95580aa"
+  },
+  "etiqueta": "NVIDIA GeForce RTX 3080 Laptop GPU | controlador 620.73.04 | CUDA imagen 13.4.92 | commit f988bfc",
+  "corrida": "20261122-221038",
+  "parametros": {
+    "url": "http://localhost:8000",
+    "imagen": "convolucion-servicio:p03",
+    "contenedor": "conv-p03",
+    "python_host": ".venv/bin/python",
+    "experimentos": "validacion,frio,integracion,resolucion,filtros,concurrencia",
+    "omitir_modos": [],
+    "repeticiones": 5,
+    "rondas": 5,
+    "reinicios": 3,
+    "forzar": false
+  },
+  "problemas": [],
+  "avisos": []
+}

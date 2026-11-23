@@ -1,0 +1,38 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.10, pytest-9.2.0, pluggy-1.7.0 -- /home/jordy/Documents/Computacion Paralela/practica3/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/jordy/Documents/Computacion Paralela/practica3
+configfile: pytest.ini
+testpaths: pruebas
+plugins: platformdirs-4.14.8
+collecting ... collected 27 items
+
+pruebas/test_aislamiento.py::test_dos_solicitudes_a_la_vez_reciben_cada_una_su_resultado PASSED [  3%]
+pruebas/test_aislamiento.py::test_con_la_cola_llena_responde_503_y_el_servicio_sigue PASSED [  7%]
+pruebas/test_entradas_invalidas.py::test_entrada_invalida_se_rechaza_y_el_servicio_sigue[no_es_imagen] PASSED [ 11%]
+pruebas/test_entradas_invalidas.py::test_entrada_invalida_se_rechaza_y_el_servicio_sigue[formato_no_permitido] PASSED [ 14%]
+pruebas/test_entradas_invalidas.py::test_entrada_invalida_se_rechaza_y_el_servicio_sigue[lado_mayor_al_limite] PASSED [ 18%]
+pruebas/test_entradas_invalidas.py::test_entrada_invalida_se_rechaza_y_el_servicio_sigue[archivo_mayor_a_40MB] PASSED [ 22%]
+pruebas/test_entradas_invalidas.py::test_entrada_invalida_se_rechaza_y_el_servicio_sigue[filtro_desconocido] PASSED [ 25%]
+pruebas/test_entradas_invalidas.py::test_entrada_invalida_se_rechaza_y_el_servicio_sigue[media_con_mascara_5] PASSED [ 29%]
+pruebas/test_entradas_invalidas.py::test_entrada_invalida_se_rechaza_y_el_servicio_sigue[nitidez_con_mascara_9] PASSED [ 33%]
+pruebas/test_entradas_invalidas.py::test_entrada_invalida_se_rechaza_y_el_servicio_sigue[mascara_no_numerica] PASSED [ 37%]
+pruebas/test_entradas_invalidas.py::test_entrada_invalida_se_rechaza_y_el_servicio_sigue[hilos_cero] PASSED [ 40%]
+pruebas/test_entradas_invalidas.py::test_entrada_invalida_se_rechaza_y_el_servicio_sigue[hilos_mayor_a_1024] PASSED [ 44%]
+pruebas/test_entradas_invalidas.py::test_imagen_truncada_responde_400 PASSED [ 48%]
+pruebas/test_entradas_invalidas.py::test_sin_archivo_responde_400 PASSED [ 51%]
+pruebas/test_entradas_invalidas.py::test_resultado_inexistente_responde_404 PASSED [ 55%]
+pruebas/test_equivalencia.py::test_directo_igual_a_servicio[media-9] PASSED [ 59%]
+pruebas/test_equivalencia.py::test_directo_igual_a_servicio[nitidez-3] PASSED [ 62%]
+pruebas/test_equivalencia.py::test_directo_igual_a_servicio[laplaciano-3] PASSED [ 66%]
+pruebas/test_equivalencia.py::test_directo_igual_a_servicio_con_pgm_real[media-9] PASSED [ 70%]
+pruebas/test_equivalencia.py::test_directo_igual_a_servicio_con_pgm_real[nitidez-3] PASSED [ 74%]
+pruebas/test_equivalencia.py::test_directo_igual_a_servicio_con_pgm_real[laplaciano-3] PASSED [ 77%]
+pruebas/test_limites.py::test_cobertura_total_con_cualquier_numero_de_hilos[128] PASSED [ 81%]
+pruebas/test_limites.py::test_cobertura_total_con_cualquier_numero_de_hilos[256] PASSED [ 85%]
+pruebas/test_limites.py::test_cobertura_total_con_cualquier_numero_de_hilos[512] PASSED [ 88%]
+pruebas/test_limpieza.py::test_varios_hilos_pueden_limpiar_a_la_vez PASSED [ 92%]
+pruebas/test_manual.py::test_laplaciano_figura1 PASSED                   [ 96%]
+pruebas/test_manual.py::test_media_con_ceros_fuera_de_la_imagen PASSED   [100%]
+
+============================= 27 passed in 12.47s ==============================
