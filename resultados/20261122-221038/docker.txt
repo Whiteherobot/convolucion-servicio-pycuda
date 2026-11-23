@@ -1,4 +1,0 @@
-REPOSITORY             TAG       DIGEST                                                                    IMAGE ID       CREATED         SIZE
-convolucion-servicio   p03       sha256:187f905c4c8fa241157779f6f70aa50438ee48924f324936ce577cdb184261a4   187f905c4c8f   2 minutes ago   13.8GB
-CONTAINER ID   IMAGE                      COMMAND                  CREATED         STATUS                    PORTS                                         NAMES
-5a7ec609ec3a   convolucion-servicio:p03   "/opt/nvidia/nvidia_…"   2 minutes ago   Up 26 seconds (healthy)   0.0.0.0:8000->8000/tcp, [::]:8000->8000/tcp   conv-p03

@@ -1,4 +1,0 @@
-corrida,entorno,filtro,mascara,resolucion,id_solicitud,error_max,error_medio,tolerancia,cumple,estado,error
-20261122-221038,NVIDIA GeForce RTX 3080 Laptop GPU | controlador 620.73.04 | CUDA imagen 13.4.92 | commit f988bfc,media,9,2000,a9f918fb572844fda8e850e9738b1a21,0.0,0.0,0.001,si,ok,
-20261122-221038,NVIDIA GeForce RTX 3080 Laptop GPU | controlador 620.73.04 | CUDA imagen 13.4.92 | commit f988bfc,nitidez,3,2000,b000e13895894dc187f4efe6a63008a2,0.0,0.0,0.001,si,ok,
-20261122-221038,NVIDIA GeForce RTX 3080 Laptop GPU | controlador 620.73.04 | CUDA imagen 13.4.92 | commit f988bfc,laplaciano,3,2000,47d2ad8197b34df9abfefc505c018304,0.0,0.0,0.001,si,ok,
